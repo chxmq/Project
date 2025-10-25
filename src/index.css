@@ -1,0 +1,426 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Avatar Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+  }
+}
+
+@keyframes mouth-move {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-mouth-move {
+  animation: mouth-move 0.2s ease-in-out infinite;
+}
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Smooth scrolling for conversation */
+.conversation-scroll {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+/* Enhanced theme transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Better contrast for analytics dashboard */
+.dark .analytics-card {
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.light .analytics-card {
+  background: hsl(var(--card) / 0.9);
+  border: 1px solid hsl(var(--border) / 0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* Improved glassmorphism for both themes */
+.backdrop-blur-glass {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.dark .backdrop-blur-glass {
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.4);
+  box-shadow: 0 8px 32px hsl(var(--primary) / 0.1);
+}
+
+.light .backdrop-blur-glass {
+  background: hsl(var(--card) / 0.8);
+  border: 1px solid hsl(var(--border) / 0.2);
+}
+
+/* Dark mode specific enhancements */
+.dark {
+  background: linear-gradient(135deg, hsl(0, 0%, 10%) 0%, hsl(0, 0%, 8%) 100%);
+}
+
+.dark .grid-pattern {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Enhanced dark mode cards */
+.dark .card {
+  background: hsl(var(--card) / 0.9);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+}
+
+/* Dark mode button enhancements */
+.dark .btn-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
+}
+
+.dark .btn-primary:hover {
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
+  transform: translateY(-1px);
+}
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light mode colors - Professional & Modern */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 262 83% 68%;
+
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 200 98% 39%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 200 98% 49%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.75rem;
+
+    /* Light mode gradients - Softer & More Professional */
+    --gradient-primary: linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 83%, 48%));
+    --gradient-accent: linear-gradient(135deg, hsl(200, 98%, 39%), hsl(220, 98%, 49%));
+    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 100%), hsl(240, 4.8%, 98%));
+
+    /* Light mode shadows - Subtle & Elegant */
+    --shadow-glow: 0 0 30px hsl(262 83% 58% / 0.15);
+    --shadow-accent-glow: 0 0 30px hsl(200 98% 39% / 0.15);
+    --shadow-elegant: 0 4px 20px -4px hsl(262 83% 58% / 0.08);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Dark mode colors - Professional Military/Technical Theme */
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 0 84% 70%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 30 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 30 100% 60%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 0 84% 60%;
+
+    /* Dark mode gradients - Military/Technical */
+    --gradient-primary: linear-gradient(135deg, hsl(0, 84%, 60%), hsl(15, 100%, 50%));
+    --gradient-accent: linear-gradient(135deg, hsl(30, 100%, 50%), hsl(45, 100%, 50%));
+    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 10%), hsl(0, 0%, 8%));
+
+    /* Dark mode shadows - Enhanced Glow */
+    --shadow-glow: 0 0 40px hsl(0 84% 60% / 0.3);
+    --shadow-accent-glow: 0 0 40px hsl(30 100% 50% / 0.3);
+    --shadow-elegant: 0 8px 25px -8px hsl(0 84% 60% / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: var(--gradient-background);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-accent-glow);
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-wave {
+    animation: wave 1.5s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-rotate-slow {
+    animation: rotate-slow 20s linear infinite;
+  }
+
+  .backdrop-blur-glass {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .backdrop-blur-glass {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .animate-slide-in-from-bottom {
+    animation: slide-in-from-bottom 0.5s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s ease-out;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(250 80% 60% / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(250 80% 60% / 0.6);
+  }
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Indian Language Support */
+.indian-text {
+  font-family: 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Bengali', 'Noto Sans Kannada', 'Noto Sans Malayalam', 'Noto Sans Gujarati', 'Noto Sans Gurmukhi', system-ui, sans-serif;
+  line-height: 1.6;
+  word-break: break-word;
+  hyphens: auto;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Language-specific font optimization */
+[lang="hi"], [lang="mr"], [lang="ne"] {
+  font-family: 'Noto Sans Devanagari', 'Noto Sans', sans-serif;
+}
+
+[lang="ta"] {
+  font-family: 'Noto Sans Tamil', 'Noto Sans', sans-serif;
+}
+
+[lang="te"] {
+  font-family: 'Noto Sans Telugu', 'Noto Sans', sans-serif;
+}
+
+[lang="bn"] {
+  font-family: 'Noto Sans Bengali', 'Noto Sans', sans-serif;
+}
+
+[lang="kn"] {
+  font-family: 'Noto Sans Kannada', 'Noto Sans', sans-serif;
+}
+
+[lang="ml"] {
+  font-family: 'Noto Sans Malayalam', 'Noto Sans', sans-serif;
+}
+
+[lang="gu"] {
+  font-family: 'Noto Sans Gujarati', 'Noto Sans', sans-serif;
+}
+
+[lang="pa"] {
+  font-family: 'Noto Sans Gurmukhi', 'Noto Sans', sans-serif;
+}
