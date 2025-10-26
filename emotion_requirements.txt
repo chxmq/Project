@@ -1,0 +1,22 @@
+# Python Requirements for Speech Emotion Recognition Module
+# Install with: pip install -r emotion_requirements.txt
+
+# Core Dependencies
+torch>=2.0.0                    # PyTorch for deep learning
+transformers>=4.30.0            # HuggingFace transformers for pretrained models
+librosa>=0.10.0                 # Audio processing and feature extraction
+soundfile>=0.12.0               # Audio file I/O
+numpy>=1.24.0                   # Numerical operations
+
+# Optional but Recommended
+torchaudio>=2.0.0              # Additional audio processing (optional)
+scipy>=1.10.0                  # Scientific computing for audio
+matplotlib>=3.7.0              # Visualization (for debugging)
+
+# For deployment/API
+flask>=2.3.0                   # Web framework for API (optional)
+flask-cors>=4.0.0              # CORS support for web API (optional)
+
+# Audio format support
+pydub>=0.25.0                  # Additional audio format support (optional)
+

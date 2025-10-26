@@ -103,6 +103,40 @@ if (!ELEVENLABS_API_KEY || ELEVENLABS_API_KEY === 'your_elevenlabs_api_key_here'
   console.warn('VITE_ELEVENLABS_API_KEY is not set. Please add your ElevenLabs API key to .env file');
 }
 
+/**
+ * Detect emotion from audio using Python ML model
+ */
+export async function detectEmotionFromAudio(audioBlob: Blob): Promise<{
+  emotion: string;
+  confidence: number;
+  intensity: string;
+} | null> {
+  try {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+
+    const response = await fetch('http://localhost:5000/detect_emotion', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      console.warn('Emotion detection API not available');
+      return null;
+    }
+
+    const result = await response.json();
+    return {
+      emotion: result.emotion,
+      confidence: result.confidence,
+      intensity: result.intensity,
+    };
+  } catch (error) {
+    console.warn('Failed to detect emotion from audio:', error);
+    return null;
+  }
+}
+
 // ElevenLabs API configuration
 const ELEVENLABS_API_ENDPOINTS = {
   TEXT_TO_SPEECH: 'https://api.elevenlabs.io/v1/text-to-speech',

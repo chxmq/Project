@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 0;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .primary-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+        .emotion-display {
+            text-align: center;
+            font-size: 80px;
+            margin: 20px 0;
+        }
+        .emotion-name {
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            text-transform: uppercase;
+        }
+        .confidence {
+            text-align: center;
+            font-size: 18px;
+            color: #666;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin: 20px 0;
+        }
+        .step {
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .step:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .record-btn {
+            background: #dc3545;
+            color: white;
+            display: none;
+        }
+        .record-btn:hover {
+            background: #c82333;
+        }
+        .record-btn.recording {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Speech Emotion Detection</h1>
+        <p class="subtitle">Test the ML model in your browser!</p>
+
+        <div id="apiStatus" class="status warning">
+            Checking API connection...
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Setup Instructions:</h3>
+            <div class="step">Open a terminal and run: <code>pip install -r emotion_requirements.txt</code></div>
+            <div class="step">Start the API: <code>python emotion_api.py</code></div>
+            <div class="step">Come back here and click "Test Emotion Detection"</div>
+        </div>
+
+        <button class="primary-btn" onclick="checkAPI()">Check API Status</button>
+        <button class="primary-btn" onclick="recordAudio()" id="recordBtn" style="display:none;">
+            🎤 Record Your Voice
+        </button>
+        <button class="record-btn" onclick="stopRecording()" id="stopBtn">
+            ⏹️ Stop Recording
+        </button>
+
+        <div id="result" class="result">
+            <div class="emotion-display" id="emoji">🎭</div>
+            <div class="emotion-name" id="emotionName">DETECTING...</div>
+            <div class="confidence" id="confidence">Analyzing your voice...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        async function checkAPI() {
+            const statusDiv = document.getElementById('apiStatus');
+            statusDiv.textContent = 'Checking...';
+            statusDiv.className = 'status warning';
+
+            try {
+                const response = await fetch('http://localhost:5000/health');
+                if (response.ok) {
+                    statusDiv.textContent = '✅ API is running! Ready to detect emotions.';
+                    statusDiv.className = 'status success';
+                    document.getElementById('recordBtn').style.display = 'block';
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ API not running.<br>Run: <code>python emotion_api.py</code>';
+                statusDiv.className = 'status error';
+            }
+        }
+
+        async function recordAudio() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await detectEmotion(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                document.getElementById('recordBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'block';
+                document.getElementById('stopBtn').classList.add('recording');
+                
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('emotionName').textContent = 'RECORDING...';
+                document.getElementById('emoji').textContent = '🎤';
+            } catch (error) {
+                alert('Microphone access denied. Please allow microphone access.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('stopBtn').classList.remove('recording');
+                document.getElementById('emotionName').textContent = 'ANALYZING...';
+                document.getElementById('emoji').textContent = '🤔';
+            }
+        }
+
+        async function detectEmotion(audioBlob) {
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+
+                const response = await fetch('http://localhost:5000/detect_emotion', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                displayResult(result);
+            } catch (error) {
+                document.getElementById('emotionName').textContent = 'ERROR';
+                document.getElementById('emoji').textContent = '❌';
+                document.getElementById('confidence').textContent = 'Failed to detect emotion. Is the API running?';
+            }
+        }
+
+        function displayResult(result) {
+            const emojiMap = {
+                'happy': '😊',
+                'sad': '😢',
+                'angry': '😠',
+                'anxious': '😰',
+                'calm': '😌',
+                'excited': '🤩',
+                'frustrated': '😤',
+                'neutral': '😐'
+            };
+
+            const emoji = emojiMap[result.emotion] || '🎭';
+            const confidence = Math.round(result.confidence * 100);
+
+            document.getElementById('emoji').textContent = emoji;
+            document.getElementById('emotionName').textContent = result.emotion.toUpperCase();
+            document.getElementById('confidence').textContent = 
+                `${confidence}% confidence • ${result.intensity} intensity`;
+            
+            document.getElementById('progressBar').style.width = confidence + '%';
+            document.getElementById('progressBar').textContent = confidence + '%';
+
+            // Show record button again after 3 seconds
+            setTimeout(() => {
+                document.getElementById('recordBtn').style.display = 'block';
+            }, 3000);
+        }
+
+        // Check API on load
+        checkAPI();
+    </script>
+</body>
+</html>
+

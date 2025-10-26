@@ -130,32 +130,39 @@
 
 /* Dark mode specific enhancements */
 .dark {
-  background: linear-gradient(135deg, hsl(0, 0%, 10%) 0%, hsl(0, 0%, 8%) 100%);
+  background: linear-gradient(135deg, hsl(0, 0%, 7%) 0%, hsl(0, 0%, 5%) 100%);
 }
 
 .dark .grid-pattern {
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
+    linear-gradient(rgba(239, 68, 68, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239, 68, 68, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 /* Enhanced dark mode cards */
 .dark .card {
-  background: hsl(var(--card) / 0.9);
-  border: 1px solid hsl(var(--border) / 0.5);
-  box-shadow: 0 4px 20px hsl(var(--primary) / 0.1);
+  background: hsl(var(--card) / 0.95);
+  border: 1px solid hsl(var(--border) / 0.6);
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.15);
 }
 
 /* Dark mode button enhancements */
 .dark .btn-primary {
   background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
-  box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
+  box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
 }
 
 .dark .btn-primary:hover {
-  box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.5);
+  transform: translateY(-2px);
+}
+
+/* Light mode specific enhancements */
+.light .card {
+  background: hsl(var(--card) / 0.98);
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.08);
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -164,94 +171,96 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Light mode colors - Professional & Modern */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Light mode colors - Cool Blue Theme */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 262 83% 58%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 262 83% 68%;
+    --primary-glow: 217 91% 70%;
+    --primary-rgb: 59 130 246;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 20% 45%;
 
-    --accent: 200 98% 39%;
+    --accent: 199 89% 48%;
     --accent-foreground: 0 0% 100%;
-    --accent-glow: 200 98% 49%;
+    --accent-glow: 199 89% 58%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 262 83% 58%;
+    --border: 214 32% 88%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
-    /* Light mode gradients - Softer & More Professional */
-    --gradient-primary: linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 83%, 48%));
-    --gradient-accent: linear-gradient(135deg, hsl(200, 98%, 39%), hsl(220, 98%, 49%));
-    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 100%), hsl(240, 4.8%, 98%));
+    /* Light mode gradients - Cool Blue */
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(199, 89%, 48%));
+    --gradient-accent: linear-gradient(135deg, hsl(199, 89%, 48%), hsl(186, 94%, 43%));
+    --gradient-background: linear-gradient(180deg, hsl(210, 40%, 98%), hsl(214, 32%, 95%));
 
-    /* Light mode shadows - Subtle & Elegant */
-    --shadow-glow: 0 0 30px hsl(262 83% 58% / 0.15);
-    --shadow-accent-glow: 0 0 30px hsl(200 98% 39% / 0.15);
-    --shadow-elegant: 0 4px 20px -4px hsl(262 83% 58% / 0.08);
+    /* Light mode shadows - Cool Blue Glow */
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.25);
+    --shadow-accent-glow: 0 0 40px hsl(199 89% 48% / 0.25);
+    --shadow-elegant: 0 8px 30px -4px hsl(217 91% 60% / 0.15);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    /* Dark mode colors - Professional Military/Technical Theme */
-    --background: 0 0% 10%;
+    /* Dark mode colors - Striking Red/Orange Theme */
+    --background: 0 0% 7%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 12%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 12%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 0 84% 60%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 0 84% 70%;
+    --primary-rgb: 239 68 68;
 
-    --secondary: 0 0% 15%;
+    --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 30 100% 50%;
+    --accent: 25 95% 53%;
     --accent-foreground: 0 0% 100%;
-    --accent-glow: 30 100% 60%;
+    --accent-glow: 25 95% 63%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
+    --border: 0 0% 18%;
+    --input: 0 0% 14%;
     --ring: 0 84% 60%;
 
-    /* Dark mode gradients - Military/Technical */
+    /* Dark mode gradients - Fiery & Powerful */
     --gradient-primary: linear-gradient(135deg, hsl(0, 84%, 60%), hsl(15, 100%, 50%));
-    --gradient-accent: linear-gradient(135deg, hsl(30, 100%, 50%), hsl(45, 100%, 50%));
-    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 10%), hsl(0, 0%, 8%));
+    --gradient-accent: linear-gradient(135deg, hsl(25, 95%, 53%), hsl(45, 100%, 50%));
+    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 7%), hsl(0, 0%, 5%));
 
-    /* Dark mode shadows - Enhanced Glow */
-    --shadow-glow: 0 0 40px hsl(0 84% 60% / 0.3);
-    --shadow-accent-glow: 0 0 40px hsl(30 100% 50% / 0.3);
-    --shadow-elegant: 0 8px 25px -8px hsl(0 84% 60% / 0.2);
+    /* Dark mode shadows - Intense Glow */
+    --shadow-glow: 0 0 50px hsl(0 84% 60% / 0.4);
+    --shadow-accent-glow: 0 0 50px hsl(25 95% 53% / 0.4);
+    --shadow-elegant: 0 12px 35px -8px hsl(0 84% 60% / 0.3);
   }
 }
 

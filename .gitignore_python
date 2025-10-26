@@ -1,0 +1,77 @@
+# Python Emotion Recognition Module - .gitignore additions
+# =========================================================
+# Add these lines to your main .gitignore file
+
+# Python virtual environment
+emotion_env/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model cache (HuggingFace transformers)
+.cache/
+models/
+*.bin
+*.safetensors
+
+# Fine-tuned models
+fine_tuned_model/
+my_custom_model/
+my_fine_tuned_model/
+
+# Training data
+emotion_samples/
+*.wav
+*.mp3
+*.webm
+*.ogg
+*.m4a
+*.flac
+test_audio.wav
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# PyTorch
+*.pth
+*.pt
+
+# Logs
+logs/
+*.log
+
+# Flask
+instance/
+.webassets-cache
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+temp/
+*.tmp
+
