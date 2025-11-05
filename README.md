@@ -1,4 +1,4 @@
-# Chara Speak - Standalone Voice Assistant
+# Madad
 
 A multilingual AI voice assistant built with React, TypeScript, and OpenAI APIs. This is a completely standalone project with advanced features like emotion detection, personality switching, and real-time analytics.
 
