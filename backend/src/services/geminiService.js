@@ -133,17 +133,18 @@ Input:
 - Taken other medicine recently? ${followUpAnswers.takenOtherMedicine}
 
 Rules:
-- Severity: "High" if fever>104°F OR (fatigue+weakness) OR duration>3 days. "Moderate" if fever/multiple symptoms/1-3 days. "Mild" otherwise.
-- For "High": teleconsultationRecommended=true, 1-2 medicines max (e.g. Paracetamol until consult). followUpDate = 1 day from today.
-- For "Moderate"/"Mild": recommend 1-4 medicines based on symptoms. Vary medicines: e.g. Cough→Cough expectorant/dextromethorphan; Indigestion→Omeprazole/antacid; Pain→Ibuprofen or Paracetamol; Cold/Fever→Paracetamol+antihistamine; etc. Do NOT always use only Paracetamol.
-- followUpDate: 1 day for High, 3 days for Moderate/Mild (use ISO date YYYY-MM-DD for 1 or 3 days from today).
+- Severity: "High" if fever>104°F OR (fatigue+weakness) OR duration>3 days or acute respiratory distress. "Moderate" if persistent symptoms or systemic involvement. "Mild" for minor symptoms.
+- For "High": teleconsultationRecommended=true, suggest 1-2 immediate stabilizing medicines (e.g. Paracetamol). followUpDate = 24 hours from now.
+- For "Moderate"/"Mild": provide an OPTIMIZED COMBINATION of medicines (2-4 drugs) targeting symtoms, including dosage and duration. For Moderate, suggest an optional teleconsultation.
+- followUpDate: Determine a valid clinical follow-up timeframe (e.g. 2 days for worsening Moderate, 5 days for clearing Mild). Use ISO date YYYY-MM-DD.
+- Drug Combinations: If multiple symptoms (e.g. Fever + Cough + Body Pain), suggest a combined protocol (e.g. Antipyretic + Expectorant + Analgesic).
 
 Return ONLY a JSON object (no markdown, no extra text):
 {
   "severity": "Mild" | "Moderate" | "High",
   "recommendations": {
     "medicines": [
-      { "name": "Medicine name", "dosage": "e.g. 500mg", "duration": "e.g. 3-5 days", "timing": ["Morning","Night"] }
+      { "name": "Medicine name", "dosage": "Exact dosage e.g. 500mg", "duration": "Exact duration e.g. 5 days", "timing": ["Morning","Afternoon","Night"] }
     ],
     "followUpDate": "YYYY-MM-DD",
     "teleconsultationRecommended": true/false

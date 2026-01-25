@@ -197,23 +197,29 @@ const PrescriptionAnalyzer = () => {
                 <h2 className="text-4xl font-black text-[#eae0d5] mb-2 uppercase tracking-tighter">
                   {analysis.safetyStatus.status} Verification
                 </h2>
-                <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
-                  {analysis.safetyStatus.issues.map((issue, idx) => (
-                    <span key={idx} className="bg-red-900/40 text-red-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-red-800/30">
-                      • {issue.description || issue}
-                    </span>
-                  ))}
-                  {analysis.safetyStatus.warnings.map((warn, idx) => (
-                    <span key={idx} className="bg-amber-900/40 text-amber-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-800/30">
-                      • {warn}
-                    </span>
-                  ))}
-                  {analysis.safetyStatus.status === 'safe' && (
+                {analysis.safetyStatus.status === 'safe' ? (
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
                     <span className="bg-emerald-900/40 text-emerald-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-emerald-800/30">
                       ✓ VERIFIED DOSAGE & COMBINATION
                     </span>
-                  )}
-                </div>
+                    <span className="bg-[#c6ac8f]/10 text-[#c6ac8f] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-[#c6ac8f]/20 flex items-center gap-2">
+                      <Activity size={12} /> REGISTRY SYNC COMPLETE
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
+                    {analysis.safetyStatus.issues.map((issue, idx) => (
+                      <span key={idx} className="bg-red-900/40 text-red-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-red-800/30">
+                        • {issue.description || issue}
+                      </span>
+                    ))}
+                    {analysis.safetyStatus.warnings.map((warn, idx) => (
+                      <span key={idx} className="bg-amber-900/40 text-amber-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-800/30">
+                        • {warn}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -244,10 +250,12 @@ const PrescriptionAnalyzer = () => {
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2 text-3xl opacity-80" title="Timing Schedule">
-                          {medicine.timing.map(t => t.toLowerCase()).join(' ').includes('morn') && '☀️'}
-                          {medicine.timing.map(t => t.toLowerCase()).join(' ').includes('after') && '🌤️'}
-                          {medicine.timing.map(t => t.toLowerCase()).join(' ').includes('night') && '🌙'}
+                        <div className="flex gap-2 text-[#c6ac8fcc] font-black uppercase text-[9px] tracking-widest">
+                          {medicine.timing?.map((t, i) => (
+                            <span key={i} className="bg-[#0a0908]/40 px-2 py-1 rounded border border-[#5e503f]/30">
+                              {t.toUpperCase()}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -287,22 +295,34 @@ const PrescriptionAnalyzer = () => {
 
               {analysis.safetyStatus.status === 'unsafe' && (
                 <Card className="bg-red-950/10 border-red-800/20">
-                  <h3 className="text-sm font-black text-red-400 uppercase tracking-widest mb-4">Critical Steps</h3>
-                  <div className="space-y-3">
-                    <Button
-                      variant="danger"
-                      className="w-full justify-center text-xs tracking-[0.1em]"
-                      onClick={() => navigate('/teleconsultation')}
-                    >
-                      SECURE CONSULTATION
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-center text-xs tracking-[0.1em]"
-                      onClick={() => navigate('/care-near-me')}
-                    >
-                      FIND LOCAL CARE
-                    </Button>
+                  <h3 className="text-sm font-black text-red-400 uppercase tracking-widest mb-4">Recovery Protocol Paths</h3>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-red-950/20 rounded-2xl border border-red-900/30">
+                      <p className="text-[10px] font-black text-red-300 uppercase tracking-widest mb-3">Option A: Global Teleconsultation</p>
+                      <Button
+                        variant="danger"
+                        className="w-full justify-center text-xs tracking-[0.1em]"
+                        onClick={() => navigate('/teleconsultation')}
+                      >
+                        SECURE CONSULTATION
+                      </Button>
+                    </div>
+
+                    <div className="relative py-2 flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-red-900/30"></div></div>
+                      <span className="relative bg-[#0a0908] px-4 text-[10px] font-black text-red-900/40 uppercase italic">Or</span>
+                    </div>
+
+                    <div className="p-4 bg-red-950/20 rounded-2xl border border-red-900/30">
+                      <p className="text-[10px] font-black text-red-300 uppercase tracking-widest mb-3">Option B: GPS Physical Deployment</p>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-center text-xs tracking-[0.1em] border-red-900/40 text-red-400 hover:bg-red-950/40"
+                        onClick={() => navigate('/care-near-me')}
+                      >
+                        FIND LOCAL CARE
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               )}

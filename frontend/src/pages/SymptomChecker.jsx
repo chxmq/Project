@@ -111,12 +111,18 @@ const SymptomChecker = () => {
         <h1 className="text-4xl font-black mb-4 text-[#eae0d5] uppercase tracking-tighter sm:text-6xl">
           Symptoms <span className="text-gradient">Wizard</span>
         </h1>
-        <p className="text-[#c6ac8fcc] font-medium tracking-wide">
-          Step {step} of 4: {
-            step === 1 ? 'Formal Identification' :
-              step === 2 ? 'Symptom Deposition' :
-                step === 3 ? 'Diagnostic Context' : 'Intelligence Results'
-          }
+        <p className="text-[#c6ac8fcc] font-medium tracking-wide flex flex-col sm:flex-row items-center justify-center gap-4">
+          <span className="opacity-80">
+            Step {step} of 4: {
+              step === 1 ? 'Formal Identification' :
+                step === 2 ? 'Symptom Deposition' :
+                  step === 3 ? 'Diagnostic Context' : 'Intelligence Results'
+            }
+          </span>
+          <span className="hidden sm:block w-1.5 h-1.5 rounded-full bg-[#c6ac8f]/40 animate-pulse"></span>
+          <span className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.2em] flex items-center gap-2 bg-[#22333b]/40 px-3 py-1 rounded-full border border-[#5e503f]/20 shadow-inner">
+            <Activity size={12} className="text-[#c6ac8f]" /> Voice Interaction Ready
+          </span>
         </p>
 
         <div className="mt-8 h-1.5 bg-[#22333b] rounded-full max-w-xs mx-auto overflow-hidden">
@@ -279,9 +285,16 @@ const SymptomChecker = () => {
                   <div key={idx} className="bg-[#22333b]/40 p-8 rounded-[2.5rem] border border-[#5e503f]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-8 hover:bg-[#22333b]/60 transition-all duration-500">
                     <div className="space-y-2">
                       <h4 className="font-black text-[#eae0d5] text-2xl uppercase tracking-tighter italic">{med.name}</h4>
-                      <p className="text-xs font-bold text-[#c6ac8f] uppercase tracking-widest">
-                        DOSAGE: {med.dosage}
-                      </p>
+                      <div className="flex gap-4">
+                        <p className="text-xs font-bold text-[#c6ac8f] uppercase tracking-widest">
+                          DOSAGE: {med.dosage}
+                        </p>
+                        {med.duration && (
+                          <p className="text-xs font-bold text-[#5e503f] uppercase tracking-widest">
+                            DURATION: {med.duration}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-3 shrink-0">
                       <div className="bg-[#0a0908]/60 px-5 py-3 rounded-2xl border border-[#c6ac8f]/20 shadow-inner">
@@ -311,15 +324,35 @@ const SymptomChecker = () => {
               </div>
 
               {(analysis.recommendations.teleconsultationRecommended || analysis.severity === 'High') && (
-                <div className="bg-red-950/10 p-8 rounded-3xl border border-red-900/20 flex flex-col justify-between">
+                <div className={`${analysis.severity === 'High' ? 'bg-red-950/10 border-red-900/20' : 'bg-[#c6ac8f]/5 border-[#c6ac8f]/10'} p-8 rounded-3xl border flex flex-col justify-between`}>
                   <div>
-                    <h3 className="font-black text-red-400 text-[10px] uppercase tracking-[0.3em] mb-4">Clinical Necessity</h3>
-                    <p className="text-red-200 text-sm font-bold uppercase tracking-tight mb-6">
-                      High-depth consultation required.
+                    <h3 className={`${analysis.severity === 'High' ? 'text-red-400' : 'text-[#c6ac8f]'} font-black text-[10px] uppercase tracking-[0.3em] mb-4`}>
+                      {analysis.severity === 'High' ? 'MANDATORY CLINICAL NECESSITY' : 'OPTIONAL SPECIALTY PHASE'}
+                    </h3>
+                    <p className={`${analysis.severity === 'High' ? 'text-red-200' : 'text-[#eae0d5]'} text-sm font-bold uppercase tracking-tight mb-6`}>
+                      {analysis.severity === 'High' ? 'High-depth consultation required immediately.' : 'Specialist verification suggested for protocol optimization.'}
                     </p>
                   </div>
-                  <Button variant="danger" className="w-full tracking-widest" onClick={() => navigate('/teleconsultation')}>
-                    SECURE APPOINTMENT
+                  <Button
+                    variant={analysis.severity === 'High' ? 'danger' : 'primary'}
+                    className="w-full tracking-widest"
+                    onClick={() => navigate('/teleconsultation')}
+                  >
+                    {analysis.severity === 'High' ? 'SECURE EMERGENCY SLOT' : 'SECURE OPTIONAL SLOT'}
+                  </Button>
+                </div>
+              )}
+
+              {analysis.severity === 'High' && (
+                <div className="bg-red-950/10 border-red-900/20 p-8 rounded-3xl border flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-red-400 font-black text-[10px] uppercase tracking-[0.3em] mb-4">GPS FACILITY LOCALIZER</h3>
+                    <p className="text-red-200 text-sm font-bold uppercase tracking-tight mb-6">
+                      Identify nearby clinical nodes for immediate physical deployment.
+                    </p>
+                  </div>
+                  <Button variant="ghost" className="w-full tracking-widest border-red-900/40 text-red-400 hover:bg-red-950/20" onClick={() => navigate('/care-near-me')}>
+                    FIND NEARBY FACILITIES
                   </Button>
                 </div>
               )}

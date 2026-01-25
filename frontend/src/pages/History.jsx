@@ -202,11 +202,19 @@ const History = () => {
                                                         </div>
 
                                                         <div className="space-y-4">
-                                                            <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] italic">Medicinal Registry</h4>
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] italic">Medicinal Registry</h4>
+                                                                <p className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest italic">
+                                                                    FOLLOW-UP: {new Date(item.recommendations?.followUpDate).toLocaleDateString()}
+                                                                </p>
+                                                            </div>
                                                             {item.recommendations?.medicines?.map((med, i) => (
                                                                 <div key={i} className="flex justify-between items-center bg-[#22333b]/20 p-4 rounded-xl border border-[#5e503f]/10">
-                                                                    <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
-                                                                    <span className="text-[9px] font-black text-[#c6ac8f] uppercase tracking-widest">{med.dosage} • {med.timing?.join(', ')}</span>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
+                                                                        <span className="text-[9px] font-black text-[#5e503f] uppercase tracking-widest">{med.timing?.join(', ')}</span>
+                                                                    </div>
+                                                                    <span className="text-[9px] font-black text-[#c6ac8f] uppercase tracking-widest">{med.dosage} • {med.duration || 'N/A'}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -233,9 +241,18 @@ const History = () => {
                                                         <div className="space-y-4">
                                                             <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] italic">Analyzed Medicines</h4>
                                                             {item.extractedData?.medicines?.map((med, i) => (
-                                                                <div key={i} className="flex justify-between items-center bg-[#22333b]/20 p-4 rounded-xl border border-[#5e503f]/10">
-                                                                    <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
-                                                                    <span className="text-[9px] font-black text-[#c6ac8f] uppercase tracking-widest">{med.dosage} • {med.frequency}</span>
+                                                                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#22333b]/20 p-5 rounded-xl border border-[#5e503f]/10 gap-4">
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
+                                                                        <span className="text-[9px] font-black text-[#5e503f] uppercase tracking-widest italic">{med.dosage} • {med.frequency}</span>
+                                                                    </div>
+                                                                    <div className="flex gap-2 text-[#c6ac8fcc] font-black uppercase text-[8px] tracking-widest">
+                                                                        {med.timing?.map((t, idx) => (
+                                                                            <span key={idx} className="bg-[#0a0908]/60 px-2 py-1 rounded border border-[#c6ac8f]/10">
+                                                                                {t.toUpperCase()}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
                                                                 </div>
                                                             ))}
                                                         </div>

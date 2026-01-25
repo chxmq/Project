@@ -39,22 +39,7 @@ const Home = () => {
             </p>
 
             <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 max-w-4xl mx-auto">
-              <Link to="/symptoms" className="group animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                <Card className="h-full flex flex-col items-center justify-center p-12 text-center group-hover:bg-[#22333b] transition-all duration-500 bg-[#22333b]/40 backdrop-blur-xl border-[#c6ac8f]/10">
-                  <div className="w-24 h-24 bg-[#5e503f]/20 text-[#c6ac8f] rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:bg-[#5e503f]/40 transition-all duration-500">
-                    <Stethoscope size={48} strokeWidth={1.5} />
-                  </div>
-                  <h2 className="text-3xl font-black text-[#eae0d5] mb-4 uppercase tracking-tight">Symptom Checker</h2>
-                  <p className="text-[#c6ac8fcc] font-medium leading-relaxed">
-                    Understated elegance in diagnosis. Analyze symptoms with quiet sophistication.
-                  </p>
-                  <div className="mt-8 text-[#eae0d5] font-black uppercase text-xs tracking-[0.2em] group-hover:tracking-[0.3em] transition-all flex items-center gap-2">
-                    Initialize Analysis <ArrowRight size={14} />
-                  </div>
-                </Card>
-              </Link>
-
-              <Link to="/prescription" className="group animate-slide-up" style={{ animationDelay: '0.4s' }}>
+              <Link to="/prescription" className="group animate-slide-up" style={{ animationDelay: '0.2s' }}>
                 <Card className="h-full flex flex-col items-center justify-center p-12 text-center group-hover:bg-[#22333b] transition-all duration-500 bg-[#22333b]/40 backdrop-blur-xl border-[#c6ac8f]/10">
                   <div className="w-24 h-24 bg-[#5e503f]/20 text-[#c6ac8f] rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:bg-[#5e503f]/40 transition-all duration-500">
                     <FileText size={48} strokeWidth={1.5} />
@@ -65,6 +50,21 @@ const Home = () => {
                   </p>
                   <div className="mt-8 text-[#eae0d5] font-black uppercase text-xs tracking-[0.2em] group-hover:tracking-[0.3em] transition-all flex items-center gap-2">
                     Process Image <ArrowRight size={14} />
+                  </div>
+                </Card>
+              </Link>
+
+              <Link to="/symptoms" className="group animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                <Card className="h-full flex flex-col items-center justify-center p-12 text-center group-hover:bg-[#22333b] transition-all duration-500 bg-[#22333b]/40 backdrop-blur-xl border-[#c6ac8f]/10">
+                  <div className="w-24 h-24 bg-[#5e503f]/20 text-[#c6ac8f] rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:bg-[#5e503f]/40 transition-all duration-500">
+                    <Stethoscope size={48} strokeWidth={1.5} />
+                  </div>
+                  <h2 className="text-3xl font-black text-[#eae0d5] mb-4 uppercase tracking-tight">Symptom Checker</h2>
+                  <p className="text-[#c6ac8fcc] font-medium leading-relaxed">
+                    Understated elegance in diagnosis. Analyze symptoms with quiet sophistication.
+                  </p>
+                  <div className="mt-8 text-[#eae0d5] font-black uppercase text-xs tracking-[0.2em] group-hover:tracking-[0.3em] transition-all flex items-center gap-2">
+                    Initialize Analysis <ArrowRight size={14} />
                   </div>
                 </Card>
               </Link>
