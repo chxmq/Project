@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@layer theme {
+  :root {
+    --color-bg-deep: #0a0908;
+    /* Black */
+    --color-bg-jet: #22333b;
+    /* Jet Black */
+    --color-linen: #eae0d5;
+    /* Soft Linen */
+    --color-tan: #c6ac8f;
+    /* Tan */
+    --color-stone: #5e503f;
+    /* Stone Brown */
+
+    /* Functional Mappings */
+    --color-primary: var(--color-tan);
+    --color-secondary: var(--color-stone);
+    --color-text-main: var(--color-linen);
+    --color-text-dim: #c6ac8fcc;
+    /* Tan with transparency */
+
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-[#22333b]/60 backdrop-blur-xl border border-[#eae0d5]/10 shadow-2xl;
+  }
+
+  .glass-card {
+    @apply bg-[#22333b]/80 backdrop-blur-md border border-[#eae0d5]/20 shadow-xl rounded-2xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-linear-to-r from-[#c6ac8f] via-[#eae0d5] to-[#c6ac8f];
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+}
+
+/* Base styles */
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #0a0908;
+  min-height: 100vh;
+  color: #eae0d5;
+}
+
+/* Selection and Accent */
+::selection {
+  background: #c6ac8f;
+  color: #0a0908;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0908;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #22333b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5e503f;
+}
+
+/* Input overriding browser defaults */
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
