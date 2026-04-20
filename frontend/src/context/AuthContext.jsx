@@ -1,23 +1,35 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, isAuthenticated, logout as authLogout } from '../services/authService.js';
-
-const AuthContext = createContext(null);
+import { useState } from 'react';
+import { AuthContext } from './AuthContextBase.js';
+import {
+  getCurrentUser,
+  isAuthenticated,
+  logout as authLogout,
+  register as authRegister,
+  login as authLogin
+} from '../services/authService.js';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const initialUser = isAuthenticated() ? getCurrentUser() : null;
+  const [user, setUser] = useState(initialUser);
+  const loading = false;
 
-  useEffect(() => {
-    // Check if user is authenticated on mount
-    if (isAuthenticated()) {
-      const currentUser = getCurrentUser();
-      setUser(currentUser);
+  // Login wrapper around authService so pages can call `login(email, password)`
+  const login = async (email, password) => {
+    const response = await authLogin(email, password);
+    if (response?.success && response?.user) {
+      setUser(response.user);
     }
-    setLoading(false);
-  }, []);
+    return response;
+  };
 
-  const login = (userData) => {
-    setUser(userData);
+  // Register wrapper around authService so pages can call
+  // `register(name, email, password)`
+  const register = async (name, email, password) => {
+    const response = await authRegister(name, email, password);
+    if (response?.success && response?.user) {
+      setUser(response.user);
+    }
+    return response;
   };
 
   const logout = () => {
@@ -29,17 +41,10 @@ export const AuthProvider = ({ children }) => {
     user,
     isAuthenticated: !!user,
     login,
+    register,
     logout,
     loading
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
 };

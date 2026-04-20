@@ -1,5 +1,5 @@
 /**
- * Gemini AI Service - Uses gemini-2.5-flash for:
+ * Gemini AI Service - Uses gemini-2.5-flash (override with GEMINI_MODEL) for:
  * - Prescription image analysis (vision)
  * - Symptom analysis and recommendations
  * - Suggestions generation
@@ -7,6 +7,36 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { readFileSync } from 'fs';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** 503/429/502 from the API are usually short-lived capacity limits, not bad requests. */
+const isTransientGeminiFailure = (err) => {
+  const code = err?.status ?? err?.statusCode;
+  if (code === 503 || code === 429 || code === 502) return true;
+  const msg = String(err?.message ?? '');
+  return /\[503 |\b503\b|\[429 |\b429\b|\[502 |\b502\b|Service Unavailable|RESOURCE_EXHAUSTED|UNAVAILABLE|Too Many Requests/i.test(
+    msg
+  );
+};
+
+/**
+ * Retries generateContent on transient failures (same pattern Google documents for spikes).
+ */
+const generateContentWithRetry = async (model, content, { maxAttempts = 4 } = {}) => {
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await model.generateContent(content);
+    } catch (err) {
+      lastErr = err;
+      if (!isTransientGeminiFailure(err) || attempt === maxAttempts) throw err;
+      const backoffMs = Math.min(10_000, 400 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 400);
+      await sleep(backoffMs);
+    }
+  }
+  throw lastErr;
+};
 
 const getModel = () => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -67,7 +97,7 @@ Rules:
     }
   };
 
-  const result = await getModel().generateContent([prompt, imagePart]);
+  const result = await generateContentWithRetry(getModel(), [prompt, imagePart]);
   const response = result.response;
   const text = response.text();
 
@@ -151,7 +181,7 @@ Return ONLY a JSON object (no markdown, no extra text):
   }
 }`;
 
-  const result = await getModel().generateContent(prompt);
+  const result = await generateContentWithRetry(getModel(), prompt);
   const text = result.response.text().trim();
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   const jsonStr = jsonMatch ? jsonMatch[0] : text;
@@ -168,11 +198,17 @@ Return ONLY a JSON object (no markdown, no extra text):
   }
 
   const rec = parsed.recommendations;
+
+  // Compute follow-up date deterministically (do not trust Gemini for the exact date).
+  // Gemini can occasionally return stale/example years, which makes the UI show incorrect years.
+  const followUpDays = parsed.severity === 'High' ? 1 : 3;
+  const computedFollowUpDate = new Date(Date.now() + followUpDays * 24 * 60 * 60 * 1000);
+
   return {
     severity: ['Mild', 'Moderate', 'High'].includes(parsed.severity) ? parsed.severity : 'Mild',
     recommendations: {
       medicines: Array.isArray(rec.medicines) ? rec.medicines : [],
-      followUpDate: rec.followUpDate ? new Date(rec.followUpDate) : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      followUpDate: computedFollowUpDate,
       teleconsultationRecommended: !!rec.teleconsultationRecommended
     }
   };
@@ -206,7 +242,7 @@ Return a JSON object only (no markdown):
   "followUpAdvice": "1-2 sentences on when to see a doctor or what to monitor"
 }`;
 
-  const result = await getModel().generateContent(prompt);
+  const result = await generateContentWithRetry(getModel(), prompt);
   const text = result.response.text().trim();
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   const jsonStr = jsonMatch ? jsonMatch[0] : text;

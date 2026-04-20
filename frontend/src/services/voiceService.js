@@ -1,7 +1,7 @@
 // Placeholder voice service - no actual implementation
 // This is just a placeholder as per requirements
 
-export const transcribeAudio = async (audioBlob) => {
+export const transcribeAudio = async () => {
   // Placeholder - returns mock transcription
   // In future, this would call the backend voice transcription endpoint
   return new Promise((resolve) => {

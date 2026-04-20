@@ -82,7 +82,8 @@ router.delete('/:id', auth, async (req, res, next) => {
       }
     }
 
-    await Prescription.deleteOne({ _id: req.params.id });
+    // Scope deletion by both id and userId to prevent cross-user deletes.
+    await Prescription.deleteOne({ _id: req.params.id, userId: req.userId });
     res.json({ success: true, message: 'Extraction record purged' });
   } catch (error) {
     next(error);

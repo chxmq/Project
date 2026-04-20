@@ -1,5 +1,9 @@
 // Real location service using OpenStreetMap APIs (free, no API key required)
 
+// overpass-api.de rejects Node's default fetch User-Agent with HTTP 406 (Apache mod_security).
+const OVERPASS_USER_AGENT =
+  'MediAI-backend/1.0 (+https://github.com/chxmq/MediAI; OpenStreetMap Overpass)';
+
 /**
  * Calculate distance between two coordinates using Haversine formula
  */
@@ -49,6 +53,7 @@ export const getNearbyHospitals = async (userLat = 28.6139, userLng = 77.2090, l
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': OVERPASS_USER_AGENT,
       },
       body: `data=${encodeURIComponent(overpassQuery)}`
     });
@@ -146,6 +151,7 @@ export const getNearbyPharmacies = async (userLat = 28.6139, userLng = 77.2090, 
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': OVERPASS_USER_AGENT,
       },
       body: `data=${encodeURIComponent(overpassQuery)}`
     });

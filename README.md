@@ -77,7 +77,6 @@ The frontend is the web interface you interact with.
 - **`frontend/`**: The React web application source code.
 - **`backend/`**: Node.js/Express server and API logic.
 - **`datasets/`**: Reference medical datasets used for training/validation.
-- **`unused_code/`**: Archived reference code not currently in use.
 
 ## ✨ Key Features
 

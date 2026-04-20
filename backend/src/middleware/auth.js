@@ -3,6 +3,13 @@ import jwt from 'jsonwebtoken';
 // JWT authentication middleware
 const auth = async (req, res, next) => {
   try {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        error: 'Server misconfiguration: JWT_SECRET is not set'
+      });
+    }
+
     // Get token from header
     const authHeader = req.headers.authorization;
     
@@ -16,7 +23,7 @@ const auth = async (req, res, next) => {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Add user ID to request
     req.userId = decoded.userId;

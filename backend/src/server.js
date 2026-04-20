@@ -17,6 +17,7 @@ import prescriptionRoutes from './routes/prescriptionRoutes.js';
 import symptomRoutes from './routes/symptomRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
+import teleconsultationRoutes from './routes/teleconsultationRoutes.js';
 
 // Import middleware
 import errorHandler from './middleware/errorHandler.js';
@@ -70,6 +71,7 @@ app.use('/api/prescription', prescriptionRoutes);
 app.use('/api/symptoms', symptomRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/location', locationRoutes);
+app.use('/api/teleconsultations', teleconsultationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

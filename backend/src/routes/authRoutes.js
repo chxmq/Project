@@ -9,6 +9,13 @@ router.post('/register', async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        error: 'Server misconfiguration: JWT_SECRET is not set'
+      });
+    }
+
     // Validation
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -32,7 +39,7 @@ router.post('/register', async (req, res, next) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -54,6 +61,13 @@ router.post('/register', async (req, res, next) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        success: false,
+        error: 'Server misconfiguration: JWT_SECRET is not set'
+      });
+    }
 
     // Validation
     if (!email || !password) {
@@ -84,7 +98,7 @@ router.post('/login', async (req, res, next) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

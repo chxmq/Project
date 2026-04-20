@@ -3,6 +3,7 @@ import auth from '../middleware/auth.js';
 import SymptomAnalysis from '../models/SymptomAnalysis.js';
 import { analyzeSymptomsWithGemini } from '../services/geminiService.js';
 import { createRecommendationFromAnalysis } from '../services/recommendationService.js';
+import { classifySeverity, generateRecommendations } from '../services/symptomAnalysisService.js';
 
 const router = express.Router();
 
@@ -41,17 +42,35 @@ router.post('/analyze', auth, async (req, res, next) => {
       });
     }
 
-    // Use Gemini for severity + recommendations (keeps same question format; only process changes)
-    const { severity, recommendations } = await analyzeSymptomsWithGemini(
-      personalData,
-      symptoms,
-      {
-        feverAbove104: !!followUpAnswers.feverAbove104,
-        fatigueWeakness: !!followUpAnswers.fatigueWeakness,
-        durationMoreThan3Days: !!followUpAnswers.durationMoreThan3Days,
-        takenOtherMedicine: !!followUpAnswers.takenOtherMedicine
-      }
-    );
+    // Hybrid approach:
+    // - Prefer Gemini when available (better language/context reasoning).
+    // - Automatically fall back to dataset-based severity + protocol engine.
+    const followUpNormalized = {
+      feverAbove104: !!followUpAnswers.feverAbove104,
+      fatigueWeakness: !!followUpAnswers.fatigueWeakness,
+      durationMoreThan3Days: !!followUpAnswers.durationMoreThan3Days,
+      takenOtherMedicine: !!followUpAnswers.takenOtherMedicine
+    };
+
+    let severity;
+    let recommendations;
+
+    try {
+      const geminiResult = await analyzeSymptomsWithGemini(
+        personalData,
+        symptoms,
+        followUpNormalized
+      );
+      severity = geminiResult.severity;
+      recommendations = geminiResult.recommendations;
+    } catch (geminiError) {
+      // If Gemini fails for any reason (missing key, network, invalid JSON),
+      // rely on dataset-driven logic to keep the app functional.
+      console.warn('Gemini symptom analysis failed; falling back to dataset engine:', geminiError?.message);
+
+      severity = classifySeverity(symptoms, followUpNormalized, personalData);
+      recommendations = generateRecommendations(symptoms, severity, personalData);
+    }
 
     const symptomAnalysis = await SymptomAnalysis.create({
       userId: req.userId,
@@ -104,7 +123,8 @@ router.delete('/:id', auth, async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Analysis node not found' });
     }
 
-    await SymptomAnalysis.deleteOne({ _id: req.params.id });
+    // Scope deletion by both id and userId to prevent cross-user deletes.
+    await SymptomAnalysis.deleteOne({ _id: req.params.id, userId: req.userId });
     res.json({ success: true, message: 'Registry node purged' });
   } catch (error) {
     next(error);

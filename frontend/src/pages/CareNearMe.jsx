@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getNearbyHospitals, getNearbyPharmacies } from '../services/locationService.js';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import ErrorMessage from '../components/ErrorMessage.jsx';
@@ -19,42 +19,7 @@ const CareNearMe = () => {
     getUserLocation();
   }, []);
 
-  useEffect(() => {
-    if (userLocation) {
-      fetchData();
-    }
-  }, [userLocation]);
-
-  const getUserLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation infrastructure unavailable. Defaulting to Central Node.');
-      setUserLocation({ lat: 28.6139, lng: 77.2090 });
-      return;
-    }
-
-    setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        setLocationError('');
-      },
-      (err) => {
-        console.error('Geolocation error:', err);
-        setLocationError('Coordinate detection failed. Defaulting to Central Node.');
-        setUserLocation({ lat: 28.6139, lng: 77.2090 });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!userLocation) return;
 
     setLoading(true);
@@ -88,6 +53,39 @@ const CareNearMe = () => {
     } finally {
       setLoading(false);
     }
+  }, [userLocation]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const getUserLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation infrastructure unavailable. Defaulting to Central Node.');
+      setUserLocation({ lat: 28.6139, lng: 77.2090 });
+      return;
+    }
+
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLocationError('');
+      },
+      (err) => {
+        console.error('Geolocation error:', err);
+        setLocationError('Coordinate detection failed. Defaulting to Central Node.');
+        setUserLocation({ lat: 28.6139, lng: 77.2090 });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   };
 
   const handleGetDirections = (coordinates) => {

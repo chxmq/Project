@@ -3,12 +3,17 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Hospital, User, Calendar, Clock, Link as LinkIcon, ChevronLeft, Star, Activity } from 'lucide-react';
+import ErrorMessage from '../components/ErrorMessage.jsx';
+import { createTeleconsultationAppointment } from '../services/teleconsultationService.js';
 
 const Teleconsultation = () => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  // Use local date (not UTC) for date input minimum.
+  const minDate = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
 
   // Mock doctor data
   const doctors = [
@@ -54,14 +59,29 @@ const Teleconsultation = () => {
     }
 
     setSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      alert(`Appointment scheduled with ${selectedDoctor.name} on ${appointmentDate} at ${appointmentTime}`);
-      setSelectedDoctor(null);
-      setAppointmentDate('');
-      setAppointmentTime('');
+    setError('');
+
+    try {
+      const res = await createTeleconsultationAppointment({
+        doctorName: selectedDoctor.name,
+        doctorSpecialty: selectedDoctor.specialty,
+        appointmentDate,
+        appointmentTime
+      });
+
+      if (res?.success) {
+        alert(`Appointment scheduled with ${selectedDoctor.name} on ${appointmentDate} at ${appointmentTime}`);
+        setSelectedDoctor(null);
+        setAppointmentDate('');
+        setAppointmentTime('');
+      } else {
+        setError(res?.error || 'Teleconsultation booking failed');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Teleconsultation booking failed');
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -80,6 +100,8 @@ const Teleconsultation = () => {
           Schedule a 5-minute specialty phase with our formal healthcare professionals.
         </p>
       </Card>
+
+      <ErrorMessage message={error} onDismiss={() => setError('')} />
 
       {!selectedDoctor ? (
         <div className="animate-slide-up">
@@ -142,7 +164,7 @@ const Teleconsultation = () => {
                   id="date"
                   value={appointmentDate}
                   onChange={(e) => setAppointmentDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={minDate}
                   required
                   className="w-full px-5 py-3.5 bg-[#0a0908]/60 border border-[#5e503f]/40 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#c6ac8f]/10 text-[#eae0d5] font-black transition-all"
                 />

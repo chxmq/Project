@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth.js';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -26,7 +26,9 @@ const Login = () => {
         setError(response.error || 'Authentication denied');
       }
     } catch (err) {
-      setError('Connection to authentication node failed');
+      // Axios rejects on non-2xx responses; surface backend-provided error when possible.
+      const backendError = err?.response?.data?.error || err?.response?.data?.message;
+      setError(backendError || err?.message || 'Connection to authentication node failed');
     } finally {
       setLoading(false);
     }

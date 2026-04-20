@@ -30,7 +30,7 @@ const History = () => {
 
             if (symptomRes.success) setSymptomHistory(symptomRes.data || []);
             if (prescriptionRes.success) setPrescriptionHistory(prescriptionRes.data || []);
-        } catch (err) {
+        } catch {
             setError('Intelligence retrieval node failed. Registry inaccessible.');
         } finally {
             setLoading(false);
@@ -48,7 +48,7 @@ const History = () => {
                 await deletePrescriptionHistory(id);
                 setPrescriptionHistory(prescriptionHistory.filter(item => item._id !== id));
             }
-        } catch (err) {
+        } catch {
             setError('Deletion protocol execution failed.');
         }
     };
