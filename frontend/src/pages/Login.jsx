@@ -23,62 +23,64 @@ const Login = () => {
       if (response.success) {
         navigate('/');
       } else {
-        setError(response.error || 'Authentication denied');
+        setError(response.error || 'Could not sign you in. Please try again.');
       }
     } catch (err) {
-      // Axios rejects on non-2xx responses; surface backend-provided error when possible.
       const backendError = err?.response?.data?.error || err?.response?.data?.message;
-      setError(backendError || err?.message || 'Connection to authentication node failed');
+      setError(backendError || err?.message || 'Something went wrong while signing in.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
+    <div className="min-h-[75vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md animate-slide-up">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black text-[#eae0d5] uppercase tracking-tighter italic">Secure Access</h1>
-          <p className="text-[10px] text-[#5e503f] font-black tracking-[0.3em] uppercase mt-3">Personnel Verification Required</p>
+        <div className="text-center mb-8">
+          <h1 className="font-display text-4xl font-semibold text-[#0f1f2e] tracking-tight">
+            Welcome back
+          </h1>
+          <p className="mt-2 text-[#3e4c5b]">Sign in to continue your care.</p>
         </div>
 
         <ErrorMessage message={error} onDismiss={() => setError('')} />
 
-        <Card className="p-10 border-[#5e503f]/20 bg-[#22333b]/40 shadow-2xl" hover={false}>
-          <form onSubmit={handleSubmit} className="space-y-8">
+        <Card className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="IDENTIFIER (EMAIL)"
+              label="Email"
               type="email"
-              placeholder="name@organization.com"
+              placeholder="you@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
-              className="tracking-wide"
+              autoComplete="email"
             />
             <Input
-              label="ACCESS CODE (PASSWORD)"
+              label="Password"
               type="password"
               placeholder="••••••••"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
+              autoComplete="current-password"
             />
 
             <Button
               type="submit"
-              className="w-full py-4 tracking-[0.3em] text-xs font-black shadow-none ring-1 ring-[#c6ac8f]/20"
+              className="w-full"
+              size="lg"
               isLoading={loading}
-              disabled={loading}
             >
-              INITIALIZE PROTOCOL
+              Sign in
             </Button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-[#5e503f]/20 text-center">
-            <p className="text-[10px] font-black text-[#5e503f] uppercase tracking-widest">
-              Unregistered entity?
-              <Link to="/register" className="text-[#c6ac8f] hover:text-[#eae0d5] ml-2 transition-colors underline">
-                COMMENCE ONBOARDING
+          <div className="mt-6 pt-6 border-t border-[#e6e2d6] text-center">
+            <p className="text-sm text-[#7b8593]">
+              New to Cura?{' '}
+              <Link to="/register" className="text-[#0f766e] hover:text-[#115e59] font-medium">
+                Create an account
               </Link>
             </p>
           </div>

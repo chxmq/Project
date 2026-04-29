@@ -1,7 +1,6 @@
 // Service for managing medicine recommendations
 
 import Recommendation from '../models/Recommendation.js';
-import SymptomAnalysis from '../models/SymptomAnalysis.js';
 
 const normalizeTiming = (timing) => {
   const allowed = ['Morning', 'Afternoon', 'Night'];

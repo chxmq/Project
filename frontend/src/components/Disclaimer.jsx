@@ -1,15 +1,14 @@
-import { AlertTriangle } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 const Disclaimer = () => {
   return (
-    <div className="w-full bg-red-950/20 border border-red-900/40 rounded-3xl p-6 shadow-2xl backdrop-blur-md">
-      <div className="flex flex-col md:flex-row items-center justify-center gap-6 max-w-5xl mx-auto">
-        <div className="flex-shrink-0 text-red-500 animate-pulse">
-          <AlertTriangle size={32} />
-        </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-200 leading-relaxed text-center md:text-left">
-          <span className="text-red-500 mr-2 font-black italic">PROTOCOL DISCLAIMER:</span>
-          THIS IS AN ARTIFICIAL INTELLIGENCE RESEARCH TOOL. IF SYMPTOMS PERSIST OR RADIATE ACUTE DISTRESS, IMMEDIATE DEPLOYMENT TO A FORMAL CLINICAL NODE IS MANDATORY. DO NOT RELY SOLELY ON DIGITAL INFERENCE FOR CRITICAL BIOLOGICAL DECISIONS.
+    <div className="w-full max-w-3xl mx-auto bg-[#fef3c7]/60 border border-[#fde68a] rounded-2xl px-5 py-4">
+      <div className="flex items-start gap-3 text-left">
+        <Info size={18} className="text-[#b45309] mt-0.5 shrink-0" />
+        <p className="text-xs sm:text-sm text-[#7c5210] leading-relaxed">
+          <span className="font-semibold">Important:</span> Cura is an educational tool, not a substitute for a
+          licensed clinician. If you have severe symptoms — high fever, chest pain, difficulty breathing, or anything
+          that feels urgent — please seek medical care directly.
         </p>
       </div>
     </div>

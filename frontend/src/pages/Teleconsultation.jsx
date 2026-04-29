@@ -1,215 +1,451 @@
-import { useState } from 'react';
-import LoadingSpinner from '../components/LoadingSpinner.jsx';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Mic,
+  Video,
+  Send,
+  Loader2,
+  Volume2,
+  VolumeX,
+  PhoneOff,
+  Sparkles,
+  AlertCircle
+} from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Hospital, User, Calendar, Clock, Link as LinkIcon, ChevronLeft, Star, Activity } from 'lucide-react';
-import ErrorMessage from '../components/ErrorMessage.jsx';
-import { createTeleconsultationAppointment } from '../services/teleconsultationService.js';
+import { getHealthAssistantReply, getHeygenAccessToken } from '../services/teleconsultationService.js';
 
 const Teleconsultation = () => {
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [appointmentDate, setAppointmentDate] = useState('');
-  const [appointmentTime, setAppointmentTime] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Hi, I\'m your health assistant. Ask me about symptoms, medicines, or care guidance.',
+      sources: []
+    }
+  ]);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // Use local date (not UTC) for date input minimum.
-  const minDate = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+  const [listening, setListening] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
 
-  // Mock doctor data
-  const doctors = [
-    {
-      id: 1,
-      name: 'Dr. Sarah Johnson',
-      specialty: 'General Medicine',
-      experience: '15 years',
-      rating: 4.8,
-      availableSlots: ['09:00', '10:00', '11:00', '14:00', '15:00']
-    },
-    {
-      id: 2,
-      name: 'Dr. Michael Chen',
-      specialty: 'Internal Medicine',
-      experience: '12 years',
-      rating: 4.9,
-      availableSlots: ['10:00', '11:00', '13:00', '14:00', '16:00']
-    },
-    {
-      id: 3,
-      name: 'Dr. Emily Rodriguez',
-      specialty: 'Family Medicine',
-      experience: '10 years',
-      rating: 4.7,
-      availableSlots: ['09:00', '10:30', '12:00', '15:00', '16:30']
-    },
-    {
-      id: 4,
-      name: 'Dr. James Wilson',
-      specialty: 'Pediatrics',
-      experience: '18 years',
-      rating: 4.9,
-      availableSlots: ['09:30', '11:00', '13:30', '14:30', '15:30']
-    }
-  ];
+  // Avatar session state
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarReady, setAvatarReady] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarAudioEnabled, setAvatarAudioEnabled] = useState(false);
+  const [avatarSpeaking, setAvatarSpeaking] = useState(false);
+  const [avatarAttempted, setAvatarAttempted] = useState(false);
 
-  const handleBookAppointment = async (e) => {
-    e.preventDefault();
-    if (!selectedDoctor || !appointmentDate || !appointmentTime) {
-      alert('Please select a doctor, date, and time');
-      return;
-    }
+  const recognitionRef = useRef(null);
+  const avatarRef = useRef(null);
+  const videoRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-    setSubmitting(true);
-    setError('');
+  const chatHistoryForApi = useMemo(
+    () => messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role, content: m.content })),
+    [messages]
+  );
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!voiceEnabled || !window.speechSynthesis) return undefined;
+    return () => window.speechSynthesis.cancel();
+  }, [voiceEnabled]);
+
+  // -------- Avatar session lifecycle --------
+
+  const startAvatarSession = async () => {
+    if (avatarLoading || avatarReady) return;
+    setAvatarError('');
+    setAvatarLoading(true);
+    setAvatarAttempted(true);
     try {
-      const res = await createTeleconsultationAppointment({
-        doctorName: selectedDoctor.name,
-        doctorSpecialty: selectedDoctor.specialty,
-        appointmentDate,
-        appointmentTime
+      const module = await import('@heygen/liveavatar-web-sdk');
+      const { LiveAvatarSession, SessionEvent, AgentEventsEnum } = module;
+
+      const configuredAvatarId = (import.meta.env.VITE_HEYGEN_AVATAR_ID || '').trim();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(configuredAvatarId);
+      const token = await getHeygenAccessToken(isUuid ? configuredAvatarId : undefined);
+      if (!token) throw new Error('Backend didn\'t return a HeyGen session token. Check LIVEAVATAR_API_KEY in your .env.');
+
+      avatarRef.current = new LiveAvatarSession(token, { voiceChat: false });
+
+      avatarRef.current.on(SessionEvent.SESSION_STREAM_READY, () => {
+        if (videoRef.current && avatarRef.current) {
+          avatarRef.current.attach(videoRef.current);
+          videoRef.current.muted = false;
+          videoRef.current.play().catch(() => {});
+        }
+        setAvatarAudioEnabled(false);
+        setAvatarReady(true);
       });
 
-      if (res?.success) {
-        alert(`Appointment scheduled with ${selectedDoctor.name} on ${appointmentDate} at ${appointmentTime}`);
-        setSelectedDoctor(null);
-        setAppointmentDate('');
-        setAppointmentTime('');
-      } else {
-        setError(res?.error || 'Teleconsultation booking failed');
-      }
+      avatarRef.current.on(SessionEvent.SESSION_DISCONNECTED, () => {
+        setAvatarReady(false);
+        setAvatarSpeaking(false);
+      });
+      avatarRef.current.on(AgentEventsEnum.AVATAR_SPEAK_STARTED, () => setAvatarSpeaking(true));
+      avatarRef.current.on(AgentEventsEnum.AVATAR_SPEAK_ENDED, () => setAvatarSpeaking(false));
+
+      await avatarRef.current.start();
+      await enableAvatarAudio();
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Teleconsultation booking failed');
+      const msg = err?.message || 'Couldn\'t start the doctor avatar.';
+      setAvatarError(msg);
     } finally {
-      setSubmitting(false);
+      setAvatarLoading(false);
     }
   };
 
+  const stopAvatarSession = async () => {
+    try {
+      await avatarRef.current?.stop();
+    } catch {
+      // no-op
+    } finally {
+      avatarRef.current = null;
+      setAvatarReady(false);
+      setAvatarAudioEnabled(false);
+      setAvatarSpeaking(false);
+      if (videoRef.current) videoRef.current.srcObject = null;
+    }
+  };
+
+  const enableAvatarAudio = async () => {
+    if (!videoRef.current) return;
+    try {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1;
+      await videoRef.current.play();
+      setAvatarAudioEnabled(true);
+      setAvatarError('');
+    } catch {
+      setAvatarAudioEnabled(false);
+      setAvatarError('Audio is blocked by your browser. Click "Enable audio" to allow it.');
+    }
+  };
+
+  // Auto-start the avatar when the user lands on the page —
+  // this makes it feel like a real video call instead of a chat-then-video flow.
+  useEffect(() => {
+    startAvatarSession();
+    return () => {
+      try {
+        avatarRef.current?.stop();
+      } catch { /* noop */ }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // -------- Chat & speech --------
+
+  const speakText = (text) => {
+    if (!voiceEnabled || !window.speechSynthesis || !text) return;
+    // If the avatar is connected and speaking, don't double-up with browser TTS.
+    if (avatarReady) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const speakWithAvatar = async (text) => {
+    if (!avatarRef.current || !avatarReady || !text) return;
+    try {
+      const room = avatarRef.current.room;
+      const participant = room?.localParticipant;
+      const isConnected = room?.state === 'connected';
+
+      if (isConnected && participant) {
+        const payload = {
+          event_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          event_type: 'avatar.speak_text',
+          text
+        };
+        const data = new TextEncoder().encode(JSON.stringify(payload));
+        participant.publishData(data, { reliable: true, topic: 'agent-control' });
+      } else {
+        avatarRef.current.repeat(text);
+      }
+      setAvatarError('');
+    } catch (firstError) {
+      try {
+        avatarRef.current.message(text);
+        setAvatarError('');
+      } catch (secondError) {
+        const detail = secondError?.message || firstError?.message || 'Avatar speak failed.';
+        setAvatarError(`Avatar audio failed: ${detail}`);
+      }
+    }
+  };
+
+  const sendPrompt = async (inputText) => {
+    const trimmed = String(inputText || '').trim();
+    if (!trimmed || loading) return;
+
+    setError('');
+    setLoading(true);
+    setMessages((prev) => [...prev, { role: 'user', content: trimmed, sources: [] }]);
+    setQuery('');
+
+    try {
+      const response = await getHealthAssistantReply({ query: trimmed, history: chatHistoryForApi });
+      const answer = response?.answer || 'I couldn\'t generate a response right now.';
+      const sources = response?.sources || [];
+      setMessages((prev) => [...prev, { role: 'assistant', content: answer, sources }]);
+      speakText(answer);
+      await speakWithAvatar(answer);
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || 'Couldn\'t get a response.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Speech recognition isn\'t supported here. Try Chrome or Edge.');
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.onerror = () => setListening(false);
+      recognition.onend = async () => {
+        setListening(false);
+        const transcript = String(recognitionRef.current?.__lastTranscript || '').trim();
+        if (transcript) await sendPrompt(transcript);
+      };
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0]?.transcript || '')
+          .join(' ')
+          .trim();
+        recognition.__lastTranscript = transcript;
+        setQuery(transcript);
+      };
+      recognitionRef.current = recognition;
+    }
+
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+      return;
+    }
+
+    setError('');
+    recognitionRef.current.start();
+    setListening(true);
+  };
+
+  const submitQuery = () => sendPrompt(query);
+
+  // -------- Avatar status pill --------
+
+  let statusLabel = 'Connecting…';
+  let statusClass = 'bg-[#fef3c7] text-[#854d0e]';
+  if (avatarReady && avatarSpeaking) {
+    statusLabel = 'Doctor speaking';
+    statusClass = 'bg-[#dbeafe] text-[#1e40af]';
+  } else if (avatarReady) {
+    statusLabel = 'Live';
+    statusClass = 'bg-[#dcfce7] text-[#166534]';
+  } else if (avatarError && avatarAttempted) {
+    statusLabel = 'Disconnected';
+    statusClass = 'bg-[#fee2e2] text-[#991b1b]';
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-4 pb-20">
-      <div className="text-center mb-16 animate-fade-in">
-        <h1 className="text-4xl font-black mb-4 text-[#eae0d5] uppercase tracking-tighter sm:text-7xl leading-tight">
-          Tele<span className="text-gradient">consultation</span>
+    <div className="max-w-7xl mx-auto pb-12">
+      <div className="text-center mb-8 space-y-3">
+        <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[#0f1f2e] tracking-tight">
+          Teleconsultation
         </h1>
-        <p className="text-lg text-[#c6ac8fcc] max-w-2xl mx-auto font-medium tracking-wide uppercase italic">
-          High-depth specialty guidance via unyielding digital infrastructure.
+        <p className="text-[#3e4c5b] max-w-2xl mx-auto">
+          A live video session with an AI doctor avatar. Speak naturally — the
+          assistant is grounded in a medical knowledge base.
         </p>
       </div>
 
-      <Card className="bg-[#22333b]/20 border-[#c6ac8f]/10 mb-10" hover={false}>
-        <p className="text-[#c6ac8f] text-sm font-black uppercase tracking-[0.2em] text-center italic">
-          Schedule a 5-minute specialty phase with our formal healthcare professionals.
-        </p>
-      </Card>
+      <div className="grid lg:grid-cols-5 gap-6">
+        {/* Video — primary focus */}
+        <div className="lg:col-span-3 space-y-4">
+          <Card className="p-0 overflow-hidden">
+            <div className="relative bg-[#0f1f2e] aspect-video">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted={!avatarAudioEnabled}
+                className="w-full h-full object-cover"
+              />
 
-      <ErrorMessage message={error} onDismiss={() => setError('')} />
+              {/* Pre-connect overlay */}
+              {!avatarReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0f1f2e]/95 text-white space-y-4 px-8 text-center">
+                  {avatarLoading || (avatarAttempted && !avatarError) ? (
+                    <>
+                      <Loader2 size={36} className="animate-spin text-[#5eead4]" />
+                      <p className="text-lg font-medium">Connecting to your AI doctor…</p>
+                      <p className="text-sm text-white/60 max-w-sm">
+                        Setting up the live video session. This usually takes 5–10 seconds.
+                      </p>
+                    </>
+                  ) : avatarError ? (
+                    <>
+                      <AlertCircle size={36} className="text-[#fca5a5]" />
+                      <p className="text-lg font-medium">Avatar couldn't start</p>
+                      <p className="text-sm text-white/70 max-w-md leading-relaxed">{avatarError}</p>
+                      <Button variant="primary" size="sm" onClick={startAvatarSession}>
+                        Try again
+                      </Button>
+                      <p className="text-xs text-white/50 max-w-md mt-2">
+                        You can still chat below — the AI assistant works without the avatar.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Video size={36} className="text-[#5eead4]" />
+                      <p className="text-lg font-medium">Ready to start</p>
+                      <Button variant="primary" size="sm" onClick={startAvatarSession}>
+                        <Video size={14} /> Start session
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
 
-      {!selectedDoctor ? (
-        <div className="animate-slide-up">
-          <h2 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tighter mb-8 italic">Choose Consultant</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            {doctors.map((doctor) => (
-              <Card
-                key={doctor.id}
-                className="hover:bg-[#22333b]/40 transition-all duration-700 cursor-pointer border-[#5e503f]/20"
-                onClick={() => setSelectedDoctor(doctor)}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tight italic">{doctor.name}</h3>
-                  <span className="bg-[#5e503f]/40 text-[#eae0d5] px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-[#5e503f]/50 shadow-sm flex items-center gap-1">
-                    <Activity size={10} /> {doctor.experience}
+              {/* In-call overlay (status pill, top-left) */}
+              {avatarReady && (
+                <div className="absolute top-4 left-4">
+                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${statusClass}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${avatarSpeaking ? 'bg-[#1e40af] animate-pulse' : 'bg-[#16a34a]'}`} />
+                    {statusLabel}
                   </span>
                 </div>
-                <div className="space-y-3 mb-8">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest">Protocol:</span>
-                    <span className="text-sm font-bold text-[#eae0d5] uppercase italic flex items-center gap-2">
-                      <Hospital size={14} className="text-[#5e503f]" /> {doctor.specialty}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest">Rating:</span>
-                    <span className="text-sm font-bold text-[#eae0d5]">⭐ {doctor.rating}/5.0</span>
-                  </div>
+              )}
+
+              {/* In-call controls (bottom strip) */}
+              {avatarReady && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#0f1f2e]/80 backdrop-blur-md px-3 py-2 rounded-full">
+                  <button
+                    onClick={enableAvatarAudio}
+                    className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                    aria-label={avatarAudioEnabled ? 'Audio on' : 'Enable audio'}
+                  >
+                    {avatarAudioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                  </button>
+                  <button
+                    onClick={stopAvatarSession}
+                    className="w-10 h-10 rounded-full bg-[#dc2626] hover:bg-[#b91c1c] text-white flex items-center justify-center transition-colors"
+                    aria-label="End session"
+                  >
+                    <PhoneOff size={16} />
+                  </button>
                 </div>
-                <Button className="w-full tracking-widest font-black" onClick={() => setSelectedDoctor(doctor)}>
-                  SECURE CONSULTANT
-                </Button>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <Card className="animate-slide-up border-[#5e503f]/20 p-10 max-w-2xl mx-auto" hover={false}>
-          <div className="mb-10">
-            <button
-              onClick={() => setSelectedDoctor(null)}
-              className="text-[#5e503f] hover:text-[#c6ac8f] font-black uppercase tracking-widest text-xs transition-colors"
-            >
-              ← REVERT TO REGISTRY
-            </button>
-            <h2 className="text-3xl font-black text-[#eae0d5] uppercase tracking-tighter italic mt-6">
-              PHASE SCHEDULING
-            </h2>
-            <p className="text-[#c6ac8f] font-bold uppercase tracking-widest text-sm mt-1">{selectedDoctor.name.toUpperCase()} / {selectedDoctor.specialty.toUpperCase()}</p>
-          </div>
-
-          <form onSubmit={handleBookAppointment}>
-            <div className="space-y-8">
-              <div>
-                <label htmlFor="date" className="block text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-3">
-                  COMMIT DATE
-                </label>
-                <input
-                  type="date"
-                  id="date"
-                  value={appointmentDate}
-                  onChange={(e) => setAppointmentDate(e.target.value)}
-                  min={minDate}
-                  required
-                  className="w-full px-5 py-3.5 bg-[#0a0908]/60 border border-[#5e503f]/40 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#c6ac8f]/10 text-[#eae0d5] font-black transition-all"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="time" className="block text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-3">
-                  COMMIT TEMPORAL SLOT
-                </label>
-                <select
-                  id="time"
-                  value={appointmentTime}
-                  onChange={(e) => setAppointmentTime(e.target.value)}
-                  required
-                  className="w-full px-5 py-3.5 bg-[#0a0908]/60 border border-[#5e503f]/40 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#c6ac8f]/10 text-[#eae0d5] font-black transition-all"
-                >
-                  <option value="" disabled className="bg-[#0a0908]">SELECT SLOT</option>
-                  {selectedDoctor.availableSlots.map((slot) => (
-                    <option key={slot} value={slot} className="bg-[#0a0908]">
-                      {slot}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="bg-[#c6ac8f]/5 border border-[#c6ac8f]/10 rounded-2xl p-6 shadow-inner">
-                <h3 className="font-black text-[#c6ac8f] text-[10px] uppercase tracking-[0.3em] mb-4">Phase Protocols</h3>
-                <ul className="text-[10px] text-[#eae0d5] font-bold uppercase tracking-widest space-y-2 opacity-80">
-                  <li>• Consultation duration: 300 SECONDS</li>
-                  <li>• Digital link delivered via secure node</li>
-                  <li>• Post-phase follow-up availability verified</li>
-                </ul>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full tracking-[0.2em] py-4"
-              >
-                {submitting ? <LoadingSpinner size="sm" /> : 'SECURE APPOINTMENT'}
-              </Button>
+              )}
             </div>
-          </form>
-        </Card>
-      )}
+          </Card>
+
+          {/* Telemetry — small, under the video */}
+          <Card className="bg-[#f0eee6]/40 py-4">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <p className="text-[10px] font-semibold text-[#0f766e] uppercase tracking-wide">LLM</p>
+                <p className="mt-0.5 text-sm text-[#0f1f2e] font-medium">Gemini 2.5 Flash</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-[#0f766e] uppercase tracking-wide">RAG</p>
+                <p className="mt-0.5 text-sm text-[#0f1f2e] font-medium">LangChain · Medical context</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-[#0f766e] uppercase tracking-wide">Avatar</p>
+                <p className="mt-0.5 text-sm text-[#0f1f2e] font-medium">HeyGen LiveAvatar</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Chat — secondary */}
+        <div className="lg:col-span-2">
+          <Card className="p-5 flex flex-col h-[640px]">
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {messages.map((msg, index) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div
+                    key={`${msg.role}-${index}`}
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                      isUser
+                        ? 'ml-auto bg-[#0f766e] text-white'
+                        : 'bg-[#f0eee6] text-[#0f1f2e]'
+                    }`}
+                  >
+                    <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${isUser ? 'text-white/70' : 'text-[#7b8593]'}`}>
+                      {isUser ? 'You' : 'Doctor'}
+                    </p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    {msg.sources?.length ? (
+                      <div className="mt-2 pt-2 border-t border-current/10 space-y-1">
+                        {msg.sources.map((source) => (
+                          <p
+                            key={source.id}
+                            className={`text-[11px] ${isUser ? 'text-white/70' : 'text-[#7b8593]'} flex gap-1`}
+                          >
+                            <Sparkles size={10} className="mt-0.5 shrink-0" />
+                            <span>Source {source.id}: {source.excerpt}</span>
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[#e6e2d6] space-y-3">
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitQuery();
+                  }
+                }}
+                placeholder={avatarReady ? 'Ask the doctor anything…' : 'Type your question…'}
+                rows={2}
+                className="w-full px-4 py-3 bg-[#f0eee6]/50 border border-[#d4cfbf] rounded-xl text-sm text-[#0f1f2e] placeholder:text-[#9aa3b1] focus:outline-none focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10 resize-none"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={submitQuery} disabled={loading} size="sm">
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  Send
+                </Button>
+                <Button variant="ghost" onClick={toggleListening} size="sm">
+                  <Mic size={14} className={listening ? 'text-[#dc2626]' : ''} />
+                  {listening ? 'Listening…' : 'Voice'}
+                </Button>
+                <Button variant="ghost" onClick={() => setVoiceEnabled((v) => !v)} size="sm">
+                  <Volume2 size={14} /> {voiceEnabled ? 'Speak: on' : 'Speak: off'}
+                </Button>
+              </div>
+              {error && <p className="text-xs text-[#dc2626]">{error}</p>}
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

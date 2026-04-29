@@ -1,15 +1,19 @@
 import React from 'react';
 
-const Card = ({ children, className = '', hover = true }) => {
-    return (
-        <div className={`
-      bg-[#22333b]/60 backdrop-blur-xl border border-[#eae0d5]/10 rounded-3xl p-6 shadow-2xl
-      ${hover ? 'hover:border-[#c6ac8f]/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all duration-500 hover:-translate-y-1' : ''}
-      ${className}
-    `}>
-            {children}
-        </div>
-    );
+const Card = ({ children, className = '', hover = false, as: Tag = 'div', ...props }) => {
+  const base =
+    'bg-white border border-[#e6e2d6] rounded-2xl p-6 ' +
+    'shadow-[0_1px_2px_rgba(15,31,46,0.04),0_4px_12px_rgba(15,31,46,0.04)]';
+
+  const hoverStyles = hover
+    ? 'transition-all duration-300 hover:-translate-y-0.5 hover:border-[#0f766e]/30 hover:shadow-[0_2px_4px_rgba(15,31,46,0.05),0_18px_40px_rgba(15,31,46,0.08)]'
+    : '';
+
+  return (
+    <Tag className={`${base} ${hoverStyles} ${className}`} {...props}>
+      {children}
+    </Tag>
+  );
 };
 
 export default Card;

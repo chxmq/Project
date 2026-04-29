@@ -2,16 +2,13 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-// Load environment variables immediately
-dotenv.config();
-
-
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 
-// Import routes
+// Load environment variables before importing modules that read them.
+dotenv.config();
+
 import authRoutes from './routes/authRoutes.js';
 import prescriptionRoutes from './routes/prescriptionRoutes.js';
 import symptomRoutes from './routes/symptomRoutes.js';
@@ -19,16 +16,13 @@ import recommendationRoutes from './routes/recommendationRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
 import teleconsultationRoutes from './routes/teleconsultationRoutes.js';
 
-// Import middleware
 import errorHandler from './middleware/errorHandler.js';
-
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 5010;
+const PORT = process.env.PORT || 5050;
 
 // Middleware
 app.use(cors({
@@ -51,7 +45,7 @@ app.use('/uploads', express.static(uploadsDir));
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/healthcare_db')
   .then(async () => {
     console.log('MongoDB connected successfully');
-    // Load dataset on startup
+
     try {
       const { processDataset } = await import('./utils/processDataset.js');
       const datasetData = processDataset();
@@ -61,6 +55,19 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/healthcar
       });
     } catch (error) {
       console.warn('Dataset loading warning:', error.message);
+    }
+
+    // Train the symptom ML model up-front so the first user request
+    // doesn't pay the k-fold + ANOVA + ROC + correlation matrix cost.
+    try {
+      const { warmUpSymptomModel } = await import('./services/symptomMlModelService.js');
+      const start = Date.now();
+      const state = warmUpSymptomModel();
+      console.log(
+        `ML model warmed up: ${state.selectedModelName} (acc=${(state.validationAccuracy * 100).toFixed(2)}%) in ${Date.now() - start}ms`
+      );
+    } catch (error) {
+      console.warn('ML warm-up warning:', error.message);
     }
   })
   .catch((err) => console.error('MongoDB connection error:', err));

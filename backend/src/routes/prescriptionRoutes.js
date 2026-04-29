@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import upload from '../middleware/upload.js';
 import auth from '../middleware/auth.js';
 import Prescription from '../models/Prescription.js';
@@ -62,13 +63,11 @@ router.get('/history', auth, async (req, res, next) => {
   }
 });
 
-import fs from 'fs';
-
 router.delete('/:id', auth, async (req, res, next) => {
   try {
     const prescription = await Prescription.findOne({ _id: req.params.id, userId: req.userId });
     if (!prescription) {
-      return res.status(404).json({ success: false, error: 'Extraction node not found' });
+      return res.status(404).json({ success: false, error: 'Prescription not found' });
     }
 
     // Attempt to delete physical file if it exists
@@ -84,7 +83,7 @@ router.delete('/:id', auth, async (req, res, next) => {
 
     // Scope deletion by both id and userId to prevent cross-user deletes.
     await Prescription.deleteOne({ _id: req.params.id, userId: req.userId });
-    res.json({ success: true, message: 'Extraction record purged' });
+    res.json({ success: true, message: 'Prescription deleted' });
   } catch (error) {
     next(error);
   }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../context/useAuth.js';
 import Button from './ui/Button';
 
@@ -8,114 +9,117 @@ const Navbar = () => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
 
-  const navLinks = [
-    { path: '/', label: 'HOME' },
-    ...(user ? [{ path: '/history', label: 'HISTORY' }] : []),
-  ];
+  // Only the two primary entry points + utility pages.
+  // Recommendations / Care nearby / Health Assistant are reached
+  // automatically from inside the flows, not from the top nav.
+  const navLinks = user
+    ? [
+        { path: '/symptoms', label: 'Symptoms' },
+        { path: '/prescription', label: 'Prescription' },
+        { path: '/history', label: 'History' },
+        { path: '/analytics', label: 'Analytics' }
+      ]
+    : [];
 
   const isActive = (path) => location.pathname === path;
 
+  const closeMobile = () => setIsOpen(false);
+
   return (
-    <nav className="sticky top-0 z-50 bg-[#0a0908]/80 backdrop-blur-lg border-b border-[#c6ac8f]/10">
+    <nav className="sticky top-0 z-50 bg-[#f7f7f3]/85 backdrop-blur-md border-b border-[#e6e2d6]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20 items-center">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-[#5e503f] to-[#c6ac8f] flex items-center justify-center text-[#0a0908] font-black text-2xl shadow-lg transition-transform group-hover:scale-110">
-              M
-            </div>
-            <span className="text-2xl font-black bg-clip-text text-transparent bg-linear-to-r from-[#eae0d5] to-[#c6ac8f]">
-              MediAI
+        <div className="flex justify-between h-16 items-center">
+          <Link to="/" className="group" onClick={closeMobile}>
+            <span className="font-display text-2xl font-semibold text-[#0f1f2e] tracking-tight">
+              Cura<span className="text-[#0f766e]">.</span>
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-2">
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`px-5 py-2 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 ${isActive(link.path)
-                  ? 'bg-[#c6ac8f]/10 text-[#c6ac8f]'
-                  : 'text-[#eae0d5]/60 hover:text-[#eae0d5] hover:bg-[#22333b]'
-                  }`}
+                className={`px-3.5 py-2 rounded-full text-sm font-medium transition-colors ${
+                  isActive(link.path)
+                    ? 'bg-[#0f766e]/10 text-[#0f766e]'
+                    : 'text-[#3e4c5b] hover:text-[#0f1f2e] hover:bg-[#f0eee6]'
+                }`}
               >
                 {link.label}
               </Link>
             ))}
           </div>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center gap-4">
+          {/* Auth controls (desktop) */}
+          <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-bold text-[#c6ac8f]">
-                  {user.name.toUpperCase()}
+              <>
+                <span className="text-sm font-medium text-[#3e4c5b]">
+                  Hi, {user.name?.split(' ')[0] || 'there'}
                 </span>
-                <button
-                  onClick={logout}
-                  className="text-xs font-black uppercase tracking-widest text-[#5e503f] hover:text-[#c6ac8f] transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
+                <Button variant="secondary" size="sm" onClick={logout}>
+                  Sign out
+                </Button>
+              </>
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" size="sm">LOGIN</Button>
+                  <Button variant="ghost" size="sm">Sign in</Button>
                 </Link>
                 <Link to="/register">
-                  <Button variant="primary" size="sm">JOIN NOW</Button>
+                  <Button variant="primary" size="sm">Get started</Button>
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-[#c6ac8f] hover:text-[#eae0d5] p-2 transition-colors"
-            >
-              <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                {isOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-          </div>
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 rounded-lg text-[#0f1f2e] hover:bg-[#f0eee6] transition-colors"
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden bg-[#0a0908] border-t border-[#c6ac8f]/10 absolute w-full animate-fade-in shadow-2xl">
-          <div className="px-6 pt-4 pb-8 space-y-3">
+        <div className="md:hidden bg-white border-t border-[#e6e2d6] animate-fade-in">
+          <div className="px-4 py-4 space-y-1">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`block px-4 py-4 rounded-2xl text-lg font-bold ${isActive(link.path)
-                  ? 'bg-[#c6ac8f]/10 text-[#c6ac8f]'
-                  : 'text-[#eae0d5]/60'
-                  }`}
-                onClick={() => setIsOpen(false)}
+                onClick={closeMobile}
+                className={`block px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                  isActive(link.path)
+                    ? 'bg-[#0f766e]/10 text-[#0f766e]'
+                    : 'text-[#3e4c5b] hover:bg-[#f0eee6]'
+                }`}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-6 border-t border-[#c6ac8f]/10 flex flex-col gap-3">
+            <div className="pt-3 mt-3 border-t border-[#e6e2d6] flex flex-col gap-2">
               {user ? (
-                <Button variant="secondary" onClick={logout} className="w-full">LOGOUT</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { logout(); closeMobile(); }}
+                  className="w-full"
+                >
+                  Sign out
+                </Button>
               ) : (
                 <>
-                  <Link to="/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="ghost" className="w-full">LOGIN</Button>
+                  <Link to="/login" onClick={closeMobile}>
+                    <Button variant="ghost" className="w-full">Sign in</Button>
                   </Link>
-                  <Link to="/register" onClick={() => setIsOpen(false)}>
-                    <Button variant="primary" className="w-full">JOIN NOW</Button>
+                  <Link to="/register" onClick={closeMobile}>
+                    <Button variant="primary" className="w-full">Get started</Button>
                   </Link>
                 </>
               )}

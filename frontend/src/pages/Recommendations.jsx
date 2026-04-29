@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Sparkles, AlertCircle } from 'lucide-react';
 import { getLatestRecommendation, getSuggestions } from '../services/recommendationService.js';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import ErrorMessage from '../components/ErrorMessage.jsx';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Sparkles, Pill, Calendar, AlertCircle, RefreshCw, ClipboardList, CheckCircle2 } from 'lucide-react';
 
 function SuggestionsBlock({ recommendation }) {
   const [suggestions, setSuggestions] = useState(null);
@@ -15,65 +16,68 @@ function SuggestionsBlock({ recommendation }) {
     setLoading(true);
     setErr('');
     try {
-      const symptoms = (recommendation?.symptomAnalysisId && typeof recommendation.symptomAnalysisId === 'object' && Array.isArray(recommendation.symptomAnalysisId.symptoms))
-        ? recommendation.symptomAnalysisId.symptoms
-        : [];
+      const symptoms =
+        recommendation?.symptomAnalysisId &&
+        typeof recommendation.symptomAnalysisId === 'object' &&
+        Array.isArray(recommendation.symptomAnalysisId.symptoms)
+          ? recommendation.symptomAnalysisId.symptoms
+          : [];
       const res = await getSuggestions({
         medicines: (recommendation?.medicines || []).map((m) => m.name),
         symptoms,
         query: 'Follow-up and self-care for my current medications'
       });
-      if (res.success && res.data) {
-        setSuggestions(res.data);
-      }
+      if (res.success && res.data) setSuggestions(res.data);
     } catch (e) {
-      setErr(e.response?.data?.error || e.message || 'Failed to load suggestions');
+      setErr(e.response?.data?.error || e.message || 'Couldn\'t load suggestions.');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <Card className="border-[#5e503f]/20 bg-[#22333b]/40">
-      <h2 className="text-xl font-black text-[#c6ac8f] mb-6 uppercase tracking-[0.2em] italic">AI Intelligence Suggestions</h2>
+    <Card>
+      <h2 className="font-display text-xl font-semibold text-[#0f1f2e] mb-4 flex items-center gap-2">
+        <Sparkles className="text-[#0f766e]" size={18} /> AI suggestions
+      </h2>
+
       {suggestions ? (
-        <div className="space-y-6 animate-fade-in">
-          <ul className="space-y-3">
+        <div className="space-y-4 animate-fade-in">
+          <ul className="space-y-2.5">
             {(suggestions.suggestions || []).map((s, i) => (
-              <li key={i} className="flex gap-4 items-start bg-[#0a0908]/40 p-4 rounded-2xl border border-[#5e503f]/10">
-                <Sparkles size={14} className="text-[#c6ac8f] mt-1 shrink-0" />
-                <span className="text-[11px] font-bold text-[#eae0d5] uppercase tracking-wider">{s}</span>
+              <li
+                key={i}
+                className="flex gap-3 items-start bg-[#f0eee6]/40 border border-[#e6e2d6] rounded-xl px-4 py-3"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0f766e] mt-2 shrink-0" />
+                <span className="text-sm text-[#0f1f2e] leading-relaxed">{s}</span>
               </li>
             ))}
           </ul>
           {suggestions.followUpAdvice && (
-            <div className="bg-[#c6ac8f]/5 p-5 rounded-2xl border border-[#c6ac8f]/10 mt-6 shadow-inner">
-              <p className="text-[10px] font-black text-[#eae0d5] uppercase tracking-[0.1em]">
-                <span className="text-[#c6ac8f] mr-2 italic">PROTOCOL:</span>
+            <div className="bg-[#d6f1ec]/40 border border-[#0f766e]/15 rounded-xl px-4 py-3">
+              <p className="text-sm text-[#0f1f2e] leading-relaxed">
+                <span className="font-semibold text-[#0f766e]">When to see a doctor: </span>
                 {suggestions.followUpAdvice}
               </p>
             </div>
           )}
-          <Button
-            variant="ghost"
-            onClick={fetchSuggestions}
-            size="sm"
-            className="mt-6 text-[10px] tracking-widest border-dashed opacity-60 hover:opacity-100"
-          >
-            RE-CALIBRATE SUGGESTIONS
+          <Button variant="ghost" size="sm" onClick={fetchSuggestions}>
+            Re-generate suggestions
           </Button>
         </div>
       ) : (
-        <div>
-          <p className="text-[#5e503f] text-xs font-black uppercase tracking-widest mb-6 italic">Secure personalized guidance via Gemini node.</p>
-          {err && <p className="text-red-400 text-[10px] font-black uppercase mb-4 tracking-tighter">{err}</p>}
-          <Button
-            onClick={fetchSuggestions}
-            disabled={loading}
-            isLoading={loading}
-            className="w-full tracking-[0.2em]"
-          >
-            INITIALIZE AI CORE
+        <div className="space-y-3">
+          <p className="text-sm text-[#3e4c5b]">
+            Get personalised guidance — what to monitor, what to avoid, and when to follow up.
+          </p>
+          {err && (
+            <p className="text-xs text-[#dc2626] flex items-center gap-1.5">
+              <AlertCircle size={13} /> {err}
+            </p>
+          )}
+          <Button onClick={fetchSuggestions} disabled={loading} isLoading={loading}>
+            Generate suggestions
           </Button>
         </div>
       )}
@@ -96,16 +100,16 @@ const Recommendations = () => {
       if (response.success) {
         setRecommendation(response.data);
         if (!response.data) {
-          setError('No active recommendations identified. Phase completion required.');
+          setError('You don\'t have any recommendations yet.');
         }
       } else {
-        setError(response.error || 'No active recommendations identified. Phase completion required.');
+        setError(response.error || 'No recommendations available.');
       }
     } catch (err) {
-      if (err.code === 'ERR_NETWORK' || err.message.includes('ERR_CONNECTION_REFUSED')) {
-        setError('Analysis Server (5010) identification failed.');
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('ERR_CONNECTION_REFUSED')) {
+        setError('Can\'t reach the server. Make sure the backend is running on port 5050.');
       } else {
-        setError(err.response?.data?.error || 'Intelligence retrieval failed.');
+        setError(err.response?.data?.error || 'Couldn\'t load your recommendations.');
       }
     } finally {
       setLoading(false);
@@ -114,111 +118,108 @@ const Recommendations = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[500px]">
-        <LoadingSpinner size="lg" className="text-[#c6ac8f]" />
-        <p className="mt-8 text-[#5e503f] font-black uppercase tracking-[0.5em] animate-pulse italic">Retrieving Protocols...</p>
+      <div className="flex flex-col justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+        <p className="mt-5 text-sm text-[#7b8593]">Loading your recommendations…</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pb-20">
-      <div className="text-center mb-16 animate-fade-in">
-        <h1 className="text-4xl font-black mb-4 text-[#eae0d5] uppercase tracking-tighter sm:text-7xl leading-tight">
-          Clinical <span className="text-gradient">Registry</span>
+    <div className="max-w-4xl mx-auto pb-12">
+      <div className="text-center mb-10 space-y-3">
+        <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[#0f1f2e] tracking-tight">
+          Your recommendations
         </h1>
-        <p className="text-lg text-[#c6ac8fcc] max-w-2xl mx-auto font-medium tracking-wide uppercase italic">
-          Sophisticated compilation of suggested protocols and AI-verified course of action.
+        <p className="text-[#3e4c5b] max-w-2xl mx-auto">
+          A summary of your most recent diagnostic session — medicines, schedule, and next steps.
         </p>
       </div>
 
       <ErrorMessage message={error} onDismiss={() => setError('')} />
 
       {recommendation ? (
-        <div className="space-y-12 animate-slide-up">
-          {/* Medicines Group */}
+        <div className="space-y-6 animate-slide-up">
           {recommendation.medicines && recommendation.medicines.length > 0 && (
-            <Card className="border-[#c6ac8f]/10">
-              <div className="flex items-center justify-between mb-8 border-b border-[#5e503f]/20 pb-6">
-                <h2 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tight italic">Protocol Medicines</h2>
-                <span className="bg-[#5e503f]/40 text-[#eae0d5] px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-[#5e503f]/50">
-                  {recommendation.medicines.length} ITEMS DEPLOYED
+            <Card>
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#e6e2d6]">
+                <h2 className="font-display text-xl font-semibold text-[#0f1f2e]">Medicines</h2>
+                <span className="text-xs font-medium text-[#7b8593] bg-[#f0eee6] px-3 py-1 rounded-full">
+                  {recommendation.medicines.length} item{recommendation.medicines.length === 1 ? '' : 's'}
                 </span>
               </div>
-              <div className="grid gap-6">
+              <div className="space-y-3">
                 {recommendation.medicines.map((medicine, idx) => (
-                  <div key={idx} className="p-8 bg-[#0a0908]/40 rounded-[2rem] border border-[#5e503f]/20 hover:border-[#c6ac8f]/30 transition-all duration-500">
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-8">
-                      <div className="space-y-3">
-                        <h3 className="text-3xl font-black text-[#eae0d5] uppercase tracking-tighter italic">{medicine.name}</h3>
-                        <div className="flex flex-wrap gap-2 text-[10px] font-black">
-                          <div className="bg-[#5e503f]/50 px-4 py-2 rounded-xl text-[#eae0d5] uppercase tracking-widest border border-[#5e503f]/30">
-                            DOSAGE: {medicine.dosage}
-                          </div>
-                          <div className="bg-[#22333b]/40 px-4 py-2 rounded-xl text-[#c6ac8f] uppercase tracking-widest border border-[#c6ac8f]/10 shadow-lg">
-                            DURATION: {medicine.duration}
-                          </div>
-                        </div>
+                  <div
+                    key={idx}
+                    className="bg-[#f0eee6]/50 border border-[#e6e2d6] rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-4"
+                  >
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-[#0f1f2e]">{medicine.name}</h3>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="px-2.5 py-1 bg-white border border-[#d4cfbf] rounded-full text-[#3e4c5b]">
+                          Dose: {medicine.dosage}
+                        </span>
+                        <span className="px-2.5 py-1 bg-white border border-[#d4cfbf] rounded-full text-[#3e4c5b]">
+                          Duration: {medicine.duration}
+                        </span>
                       </div>
-                      {medicine.timing && medicine.timing.length > 0 && (
-                        <div className="bg-[#0a0908]/80 px-5 py-3 rounded-2xl border border-[#5e503f]/40 shadow-inner">
-                          <span className="text-[9px] font-black text-[#c6ac8fcc] uppercase tracking-[0.2em]">
-                            SCHEDULE: {medicine.timing.join(' • ')}
-                          </span>
-                        </div>
-                      )}
                     </div>
+                    {medicine.timing?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {medicine.timing.map((t, i) => (
+                          <span
+                            key={i}
+                            className="px-3 py-1 rounded-full bg-[#d6f1ec] text-[#0f766e] text-xs font-medium"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Follow-up Date */}
           {recommendation.followUpDate && (
-            <Card className="bg-[#5e503f]/10 border-[#5e503f]/30 text-center py-12">
-              <h2 className="text-sm font-black text-[#5e503f] uppercase tracking-[0.4em] mb-6">Review Temporal Goal</h2>
-              <p className="text-4xl sm:text-5xl font-black text-[#eae0d5] uppercase tracking-tighter italic leading-none">
-                {new Date(recommendation.followUpDate).toLocaleDateString('en-GB', {
+            <Card className="bg-[#f0eee6]/50 border-[#e6e2d6] text-center py-8">
+              <p className="text-xs uppercase tracking-wide text-[#0f766e] font-semibold">Follow up</p>
+              <p className="mt-3 font-display text-3xl font-semibold text-[#0f1f2e]">
+                {new Date(recommendation.followUpDate).toLocaleDateString(undefined, {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric'
                 })}
               </p>
-              <div className="mt-8 mx-auto max-w-sm">
-                <p className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest leading-relaxed opacity-60">
-                  Mandatory clinical verification required on or before this designated timestamp to satisfy safety protocols.
-                </p>
-              </div>
+              <p className="mt-2 text-sm text-[#3e4c5b] max-w-md mx-auto">
+                Re-evaluate how you're feeling on or before this date.
+              </p>
             </Card>
           )}
 
-          {/* AI Suggestions (Gemini) */}
           <SuggestionsBlock recommendation={recommendation} />
 
-          {/* Important Notes */}
-          <Card className="bg-red-950/5 border-red-900/10">
-            <h3 className="text-xs font-black text-red-400 uppercase tracking-[0.3em] mb-6 border-b border-red-900/10 pb-4">Critical Constraints</h3>
-            <ul className="grid gap-4">
-              {[
-                'Adhere strictly to suggested course of action.',
-                'Do not terminate medication cycles prematurely.',
-                'Execute immediate consultation if severity escalates.',
-                'Document and report all physiological variances.'
-              ].map((note, i) => (
-                <li key={i} className="flex gap-4 items-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-400/40"></div>
-                  <span className="text-[10px] font-bold text-[#eae0d5]/70 uppercase tracking-widest">{note}</span>
-                </li>
-              ))}
+          <Card className="bg-[#fef3c7]/40 border-[#fde68a]">
+            <h3 className="text-sm font-semibold text-[#854d0e] mb-3">Things to keep in mind</h3>
+            <ul className="space-y-2 text-sm text-[#7c5210]">
+              <li className="flex gap-2"><span>•</span> Stick to the dose and timing above.</li>
+              <li className="flex gap-2"><span>•</span> Don't stop early just because you feel better.</li>
+              <li className="flex gap-2"><span>•</span> If symptoms get worse, talk to a doctor right away.</li>
+              <li className="flex gap-2"><span>•</span> Note any side effects to share at your next visit.</li>
             </ul>
           </Card>
         </div>
       ) : (
-        <Card className="text-center py-20 border-dashed border-[#5e503f]/20">
-          <p className="text-[#5e503f] font-black uppercase tracking-widest">
-            Registry is empty. Complete a <Link to="/symptoms" className="text-[#c6ac8f] underline">Diagnostic Phase</Link> to initialize data.
+        <Card className="text-center py-16 border-dashed">
+          <p className="text-[#3e4c5b]">
+            You haven't run a symptom check yet.{' '}
+            <Link to="/symptoms" className="text-[#0f766e] hover:text-[#115e59] font-medium underline-offset-4 hover:underline">
+              Start one now
+            </Link>
+            .
           </p>
         </Card>
       )}

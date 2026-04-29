@@ -13,6 +13,7 @@ import Recommendations from './pages/Recommendations.jsx';
 import CareNearMe from './pages/CareNearMe.jsx';
 import Teleconsultation from './pages/Teleconsultation.jsx';
 import History from './pages/History.jsx';
+import ModelAnalytics from './pages/ModelAnalytics.jsx';
 
 function App() {
   return (
@@ -70,6 +71,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <History />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <ModelAnalytics />
                 </ProtectedRoute>
               }
             />

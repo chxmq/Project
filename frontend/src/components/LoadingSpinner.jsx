@@ -1,21 +1,18 @@
 const LoadingSpinner = ({ size = 'md', className = '' }) => {
   const sizeClasses = {
     sm: 'w-4 h-4 border-2',
-    md: 'w-10 h-10 border-4',
-    lg: 'w-16 h-16 border-[6px]'
+    md: 'w-8 h-8 border-[3px]',
+    lg: 'w-12 h-12 border-4'
   };
 
   return (
     <div className={`flex justify-center items-center ${className}`}>
       <div
-        className={`${sizeClasses[size]} border-[#22333b] border-t-[#c6ac8f] rounded-full shadow-[0_0_20px_rgba(198,172,143,0.2)]`}
-        style={{
-          animation: 'spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite'
-        }}
-      ></div>
+        className={`${sizeClasses[size]} border-[#e6e2d6] border-t-[#0f766e] rounded-full`}
+        style={{ animation: 'spin 0.7s linear infinite' }}
+      />
       <style>{`
         @keyframes spin {
-          from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
       `}</style>

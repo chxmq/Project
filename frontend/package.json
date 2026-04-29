@@ -1,7 +1,7 @@
 {
-  "name": "app",
+  "name": "cura-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@heygen/liveavatar-web-sdk": "^0.0.16",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.6.5",
     "clsx": "^2.1.1",

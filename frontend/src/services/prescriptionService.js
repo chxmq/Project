@@ -4,11 +4,9 @@ export const analyzePrescription = async (imageFile) => {
   const formData = new FormData();
   formData.append('prescription', imageFile);
 
-  const response = await api.post('/prescription/analyze', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
+  // Don't set Content-Type manually — axios will fill in the
+  // correct multipart boundary when given a FormData payload.
+  const response = await api.post('/prescription/analyze', formData);
   return response.data;
 };
 

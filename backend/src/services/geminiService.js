@@ -143,75 +143,79 @@ Rules:
 };
 
 /**
- * Analyze symptoms and generate severity + recommendations using Gemini
- * followUpAnswers: { feverAbove104, fatigueWeakness, durationMoreThan3Days, takenOtherMedicine }
- * Returns: { severity, recommendations: { medicines, followUpDate, teleconsultationRecommended } }
+ * AI-powered drug combination suggestion for Mild/Moderate severity.
+ * Returns a structured JSON with medicine names, dosage, duration, and a brief
+ * rationale + safety notes. Returns null if Gemini isn't configured.
  */
-export const analyzeSymptomsWithGemini = async (personalData, symptoms, followUpAnswers) => {
-  if (!isAvailable()) {
-    throw new Error('GEMINI_API_KEY is not set. Add it to your .env file.');
-  }
+export const getMedicineCombinationFromGemini = async ({
+  symptoms = [],
+  severity = 'Mild',
+  personalData = {},
+  followUpAnswers = {}
+}) => {
+  if (!isAvailable()) return null;
 
-  const prompt = `You are a healthcare decision-support assistant. Based on the following, determine severity and recommend medicines.
+  const prompt = `You are a clinical decision-support assistant. The user has been
+classified as "${severity}" severity by a separate ML model — use that to set
+your aggressiveness, do NOT re-classify severity.
 
-Input:
-- Age: ${personalData.age}, Sex: ${personalData.sex}, Weight: ${personalData.weight} kg
-- Symptoms: ${symptoms.join(', ')}
-- Is fever above 104°F? ${followUpAnswers.feverAbove104}
-- Fatigue/weakness with fever? ${followUpAnswers.fatigueWeakness}
-- Lasted more than 3 days? ${followUpAnswers.durationMoreThan3Days}
-- Taken other medicine recently? ${followUpAnswers.takenOtherMedicine}
+Patient profile:
+- Age: ${personalData.age ?? 'unknown'}
+- Sex: ${personalData.sex ?? 'unknown'}
+- Weight: ${personalData.weight ?? 'unknown'} kg
 
-Rules:
-- Severity: "High" if fever>104°F OR (fatigue+weakness) OR duration>3 days or acute respiratory distress. "Moderate" if persistent symptoms or systemic involvement. "Mild" for minor symptoms.
-- For "High": teleconsultationRecommended=true, suggest 1-2 immediate stabilizing medicines (e.g. Paracetamol). followUpDate = 24 hours from now.
-- For "Moderate"/"Mild": provide an OPTIMIZED COMBINATION of medicines (2-4 drugs) targeting symtoms, including dosage and duration. For Moderate, suggest an optional teleconsultation.
-- followUpDate: Determine a valid clinical follow-up timeframe (e.g. 2 days for worsening Moderate, 5 days for clearing Mild). Use ISO date YYYY-MM-DD.
-- Drug Combinations: If multiple symptoms (e.g. Fever + Cough + Body Pain), suggest a combined protocol (e.g. Antipyretic + Expectorant + Analgesic).
+Current symptoms: ${symptoms.join(', ') || 'unspecified'}
+Follow-up flags:
+- Fever above 104°F: ${followUpAnswers.feverAbove104 ? 'yes' : 'no'}
+- Severe fatigue/weakness: ${followUpAnswers.fatigueWeakness ? 'yes' : 'no'}
+- Lasted more than 3 days: ${followUpAnswers.durationMoreThan3Days ? 'yes' : 'no'}
+- Recently took other medication: ${followUpAnswers.takenOtherMedicine ? 'yes' : 'no'}
 
-Return ONLY a JSON object (no markdown, no extra text):
+Suggest a SAFE over-the-counter combination of 2 to 4 medicines that together
+address the listed symptoms. Prefer well-known, widely-available OTC drugs
+(e.g. Paracetamol, Ibuprofen, Cetirizine, Loratadine, ORS, Pantoprazole,
+Dextromethorphan, Guaifenesin). Avoid prescription-only drugs and avoid any
+combinations known to interact dangerously (e.g. Paracetamol + Ibuprofen
+together, two NSAIDs, etc.).
+
+For each medicine, give a realistic adult dose, duration in days, and timing.
+
+Return JSON only — no markdown, no commentary:
 {
-  "severity": "Mild" | "Moderate" | "High",
-  "recommendations": {
-    "medicines": [
-      { "name": "Medicine name", "dosage": "Exact dosage e.g. 500mg", "duration": "Exact duration e.g. 5 days", "timing": ["Morning","Afternoon","Night"] }
-    ],
-    "followUpDate": "YYYY-MM-DD",
-    "teleconsultationRecommended": true/false
-  }
+  "medicines": [
+    {
+      "name": "Paracetamol",
+      "dosage": "500mg",
+      "duration": "3 days",
+      "timing": ["Morning", "Afternoon", "Night"]
+    }
+  ],
+  "rationale": "1-2 sentence explanation of WHY this combination addresses the symptoms",
+  "warnings": ["short safety note", "another note"]
 }`;
 
-  const result = await generateContentWithRetry(getModel(), prompt);
-  const text = result.response.text().trim();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  const jsonStr = jsonMatch ? jsonMatch[0] : text;
-
-  let parsed;
   try {
-    parsed = JSON.parse(jsonStr);
-  } catch (e) {
-    throw new Error(`Gemini returned invalid JSON for symptom analysis: ${text?.slice(0, 300)}`);
+    const result = await generateContentWithRetry(getModel(), prompt);
+    const text = result.response.text().trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : text;
+    const parsed = JSON.parse(jsonStr);
+
+    const medicines = Array.isArray(parsed.medicines) ? parsed.medicines : [];
+    return {
+      medicines: medicines.map((m) => ({
+        name: m.name || 'Unknown',
+        dosage: m.dosage || 'As advised',
+        duration: m.duration || 'As advised',
+        timing: Array.isArray(m.timing) && m.timing.length > 0 ? m.timing : ['Morning', 'Night']
+      })),
+      rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings.filter((w) => typeof w === 'string') : []
+    };
+  } catch (err) {
+    console.warn('Gemini medicine suggestion failed:', err.message);
+    return null;
   }
-
-  if (!parsed.severity || !parsed.recommendations) {
-    throw new Error('Gemini did not return valid severity or recommendations.');
-  }
-
-  const rec = parsed.recommendations;
-
-  // Compute follow-up date deterministically (do not trust Gemini for the exact date).
-  // Gemini can occasionally return stale/example years, which makes the UI show incorrect years.
-  const followUpDays = parsed.severity === 'High' ? 1 : 3;
-  const computedFollowUpDate = new Date(Date.now() + followUpDays * 24 * 60 * 60 * 1000);
-
-  return {
-    severity: ['Mild', 'Moderate', 'High'].includes(parsed.severity) ? parsed.severity : 'Mild',
-    recommendations: {
-      medicines: Array.isArray(rec.medicines) ? rec.medicines : [],
-      followUpDate: computedFollowUpDate,
-      teleconsultationRecommended: !!rec.teleconsultationRecommended
-    }
-  };
 };
 
 /**
@@ -266,6 +270,6 @@ Return a JSON object only (no markdown):
 export default {
   isAvailable,
   analyzePrescriptionImage,
-  analyzeSymptomsWithGemini,
+  getMedicineCombinationFromGemini,
   getSuggestionsWithGemini
 };

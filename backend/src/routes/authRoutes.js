@@ -7,7 +7,12 @@ const router = express.Router();
 // Register new user
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const rawName = req.body?.name;
+    const rawEmail = req.body?.email;
+    const rawPassword = req.body?.password;
+    const name = typeof rawName === 'string' ? rawName.trim() : '';
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+    const password = typeof rawPassword === 'string' ? rawPassword : '';
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({
@@ -24,12 +29,19 @@ router.post('/register', async (req, res, next) => {
       });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters'
+      });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        error: 'User already exists with this email'
+        error: 'An account with this email already exists. Please log in instead.'
       });
     }
 

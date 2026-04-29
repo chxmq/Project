@@ -28,7 +28,9 @@ const safeDosageLimits = {
   'Fexofenadine': 180  // 180mg per day
 };
 
-// Comprehensive dangerous drug combinations
+// Dangerous drug combinations.
+// NOTE: this is a hand-curated minimal list — for production replace with
+// a proper interaction database (RxNorm / openFDA / DailyMed).
 const dangerousCombinations = [
   {
     drugs: ['Paracetamol', 'Ibuprofen'],
@@ -36,7 +38,7 @@ const dangerousCombinations = [
   },
   {
     drugs: ['Aspirin', 'Ibuprofen'],
-    reason: 'Increased risk of gastrointestinal bleeding'
+    reason: 'Both NSAIDs - increased risk of GI bleeding and kidney damage'
   },
   {
     drugs: ['Ciprofloxacin', 'Doxycycline'],
@@ -45,10 +47,6 @@ const dangerousCombinations = [
   {
     drugs: ['Aspirin', 'Warfarin'],
     reason: 'Increased bleeding risk'
-  },
-  {
-    drugs: ['Ibuprofen', 'Aspirin'],
-    reason: 'Both NSAIDs - increased risk of GI bleeding and kidney damage'
   },
   {
     drugs: ['Metformin', 'Alcohol'],
@@ -136,70 +134,88 @@ const extractDosageValue = (dosageString) => {
 };
 
 /**
- * Check if dosage is within safe limits
+ * Infer the number of doses per day from a frequency string.
  */
-const checkDosageSafety = (medicine) => {
-  const issues = [];
-  const normalizedName = normalizeMedicineName(medicine.name);
-  const dosage = medicine.dosage;
+const inferTimesPerDay = (frequency) => {
+  const freq = (frequency || '').toLowerCase().trim();
+  if (!freq) return 2;
 
-  if (!safeDosageLimits[normalizedName]) {
-    // Unknown medicine - log but don't fail
-    return { safe: true, issues: [], warning: `No dosage limit data for ${medicine.name}` };
-  }
-
-  const dosageValue = extractDosageValue(dosage);
-  if (dosageValue === null) {
-    issues.push(`Cannot parse dosage for ${medicine.name}: ${dosage}`);
-    return { safe: false, issues };
-  }
-
-  const maxDosage = safeDosageLimits[normalizedName];
-
-  // Infer times per day from frequency string
-  const freq = (medicine.frequency || '').toLowerCase();
-  let timesPerDay = 2;
-  if (/\d+/.test(freq)) {
-    const m = medicine.frequency.match(/(\d+)/);
-    timesPerDay = m ? parseInt(m[1], 10) : 2;
-  } else if (freq.includes('once') || freq.includes('od ') || freq === 'od') timesPerDay = 1;
-  else if (freq.includes('twice') || freq.includes('bd ') || freq === 'bd') timesPerDay = 2;
-  else if (freq.includes('thrice') || freq.includes('tds') || freq.includes('tid')) timesPerDay = 3;
-
-  const dailyDosage = dosageValue * timesPerDay;
-
-  if (dailyDosage > maxDosage) {
-    issues.push(`${medicine.name}: Daily dosage (${dailyDosage}mg) exceeds safe limit (${maxDosage}mg). Maximum safe daily dose is ${maxDosage}mg.`);
-  } else if (dailyDosage > maxDosage * 0.8) {
-    // Warning if close to limit
-    issues.push({
-      type: 'warning',
-      description: `${medicine.name}: Daily dosage (${dailyDosage}mg) is close to safe limit (${maxDosage}mg). Please monitor.`
-    });
-  }
-
-  return {
-    safe: issues.filter(i => typeof i === 'string' || i.type !== 'warning').length === 0,
-    issues: issues.filter(i => typeof i === 'string' || i.type === 'warning'),
-    warnings: issues.filter(i => typeof i === 'object' && i.type === 'warning')
-  };
+  const numericMatch = freq.match(/(\d+)/);
+  if (numericMatch) return parseInt(numericMatch[1], 10);
+  if (freq.includes('once') || freq === 'od' || freq.startsWith('od ')) return 1;
+  if (freq.includes('twice') || freq === 'bd' || freq.startsWith('bd ')) return 2;
+  if (freq.includes('thrice') || freq.includes('tds') || freq.includes('tid')) return 3;
+  return 2;
 };
 
 /**
- * Check for dangerous drug combinations
+ * Check if dosage is within safe limits.
+ * Returns { issues: [{type, description}], warnings: [string] }.
+ */
+const checkDosageSafety = (medicine) => {
+  const normalizedName = normalizeMedicineName(medicine.name);
+
+  if (!safeDosageLimits[normalizedName]) {
+    return {
+      issues: [],
+      warnings: [`No dosage limit data for ${medicine.name}`]
+    };
+  }
+
+  const dosageValue = extractDosageValue(medicine.dosage);
+  if (dosageValue === null) {
+    return {
+      issues: [{
+        type: 'dosage',
+        description: `Cannot parse dosage for ${medicine.name}: ${medicine.dosage}`
+      }],
+      warnings: []
+    };
+  }
+
+  const maxDosage = safeDosageLimits[normalizedName];
+  const timesPerDay = inferTimesPerDay(medicine.frequency);
+  const dailyDosage = dosageValue * timesPerDay;
+
+  if (dailyDosage > maxDosage) {
+    return {
+      issues: [{
+        type: 'dosage',
+        description: `${medicine.name}: Daily dosage (${dailyDosage}mg) exceeds safe limit (${maxDosage}mg). Maximum safe daily dose is ${maxDosage}mg.`
+      }],
+      warnings: []
+    };
+  }
+
+  if (dailyDosage > maxDosage * 0.8) {
+    return {
+      issues: [],
+      warnings: [`${medicine.name}: Daily dosage (${dailyDosage}mg) is close to safe limit (${maxDosage}mg). Please monitor.`]
+    };
+  }
+
+  return { issues: [], warnings: [] };
+};
+
+/**
+ * Check for dangerous drug combinations.
+ * Uses normalised names + word-boundary matching to avoid spurious hits
+ * (e.g. 3-letter substrings matching unrelated drugs).
  */
 const checkDrugInteractions = (medicines) => {
   const issues = [];
-  const medicineNames = medicines.map(m => normalizeMedicineName(m.name));
+  const normalisedNames = medicines
+    .map(m => normalizeMedicineName(m.name).toLowerCase())
+    .filter(Boolean);
+
+  const matchesDrug = (drug) => {
+    const target = drug.toLowerCase();
+    const pattern = new RegExp(`\\b${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    return normalisedNames.some((name) => name === target || pattern.test(name));
+  };
 
   for (const combination of dangerousCombinations) {
-    const hasAll = combination.drugs.every(drug => 
-      medicineNames.some(name => 
-        name.toLowerCase().includes(drug.toLowerCase()) || 
-        drug.toLowerCase().includes(name.toLowerCase())
-      )
-    );
-    
+    const hasAll = combination.drugs.every(matchesDrug);
     if (hasAll) {
       issues.push({
         type: 'interaction',
@@ -223,14 +239,17 @@ const validateTiming = (medicines) => {
   for (const medicine of medicines) {
     if (!medicine.timing || medicine.timing.length === 0) {
       warnings.push(`${medicine.name}: No timing instructions provided`);
-    } else {
-      // Check if timing matches frequency
-      const frequencyMatch = medicine.frequency.match(/(\d+)/);
-      const expectedTimings = frequencyMatch ? parseInt(frequencyMatch[1]) : 2;
-      
-      if (medicine.timing.length !== expectedTimings) {
-        warnings.push(`${medicine.name}: Timing instructions (${medicine.timing.length}) don't match frequency (${expectedTimings} times daily)`);
-      }
+      continue;
+    }
+
+    const frequencyText = medicine.frequency || '';
+    const frequencyMatch = frequencyText.match(/(\d+)/);
+    const expectedTimings = frequencyMatch ? parseInt(frequencyMatch[1], 10) : null;
+
+    if (expectedTimings && medicine.timing.length !== expectedTimings) {
+      warnings.push(
+        `${medicine.name}: Timing instructions (${medicine.timing.length}) don't match frequency (${expectedTimings} times daily)`
+      );
     }
   }
 
@@ -238,12 +257,11 @@ const validateTiming = (medicines) => {
 };
 
 /**
- * Main safety check function
+ * Main safety check function.
+ * Issues mark the prescription as unsafe; warnings are advisory only.
  */
 export const checkPrescriptionSafety = (extractedData) => {
-  const { medicines } = extractedData;
-  const allIssues = [];
-  const warnings = [];
+  const { medicines } = extractedData || {};
 
   if (!medicines || medicines.length === 0) {
     return {
@@ -253,37 +271,24 @@ export const checkPrescriptionSafety = (extractedData) => {
     };
   }
 
-  // Check each medicine's dosage
+  const issues = [];
+  const warnings = [];
+
   for (const medicine of medicines) {
     const dosageCheck = checkDosageSafety(medicine);
-    if (!dosageCheck.safe) {
-      allIssues.push(...dosageCheck.issues.map(issue => 
-        typeof issue === 'string' 
-          ? { type: 'dosage', description: issue }
-          : issue
-      ));
-    }
-    if (dosageCheck.warnings) {
-      warnings.push(...dosageCheck.warnings);
-    }
+    issues.push(...dosageCheck.issues);
+    warnings.push(...dosageCheck.warnings);
   }
 
-  // Check drug interactions
   const interactionCheck = checkDrugInteractions(medicines);
-  if (!interactionCheck.safe) {
-    allIssues.push(...interactionCheck.issues);
-  }
+  issues.push(...interactionCheck.issues);
 
-  // Validate timing
-  const timingWarnings = validateTiming(medicines);
-  warnings.push(...timingWarnings);
-
-  const isSafe = allIssues.filter(i => i.type !== 'warning').length === 0;
+  warnings.push(...validateTiming(medicines));
 
   return {
-    status: isSafe ? 'safe' : 'unsafe',
-    issues: allIssues,
-    warnings: warnings
+    status: issues.length === 0 ? 'safe' : 'unsafe',
+    issues,
+    warnings
   };
 };
 

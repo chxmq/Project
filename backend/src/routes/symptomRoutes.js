@@ -1,32 +1,35 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
 import SymptomAnalysis from '../models/SymptomAnalysis.js';
-import { analyzeSymptomsWithGemini } from '../services/geminiService.js';
 import { createRecommendationFromAnalysis } from '../services/recommendationService.js';
-import { classifySeverity, generateRecommendations } from '../services/symptomAnalysisService.js';
+import { predictSymptomAssessment, getSymptomModelMetrics } from '../services/symptomMlModelService.js';
+import { getMedicineCombinationFromGemini } from '../services/geminiService.js';
 
 const router = express.Router();
 
 /**
  * POST /api/symptoms/analyze
- * Analyzes symptoms using Gemini. Same request/response shape; only the processing uses AI.
+ * Analyzes symptoms using trained ML model only.
  * Body: { personalData: {age,sex,weight}, symptoms: string[], followUpAnswers: { feverAbove104, fatigueWeakness, durationMoreThan3Days, takenOtherMedicine } }
- * Requires: GEMINI_API_KEY in .env
  */
 router.post('/analyze', auth, async (req, res, next) => {
   try {
-    const { personalData, symptoms, followUpAnswers } = req.body;
+    const { personalData: rawPersonalData, symptoms, followUpAnswers } = req.body;
 
-    if (personalData && personalData.sex) {
-      personalData.sex = personalData.sex.toLowerCase();
-    }
-
-    if (!personalData || !symptoms || !followUpAnswers) {
+    if (!rawPersonalData || !symptoms || !followUpAnswers) {
       return res.status(400).json({
         success: false,
         error: 'Please provide personal data, symptoms, and follow-up answers'
       });
     }
+
+    // Don't mutate req.body — work on a normalised copy.
+    const personalData = {
+      ...rawPersonalData,
+      sex: typeof rawPersonalData.sex === 'string'
+        ? rawPersonalData.sex.toLowerCase()
+        : rawPersonalData.sex
+    };
 
     if (!personalData.age || !personalData.sex || !personalData.weight) {
       return res.status(400).json({
@@ -42,41 +45,50 @@ router.post('/analyze', auth, async (req, res, next) => {
       });
     }
 
-    // Hybrid approach:
-    // - Prefer Gemini when available (better language/context reasoning).
-    // - Automatically fall back to dataset-based severity + protocol engine.
     const followUpNormalized = {
       feverAbove104: !!followUpAnswers.feverAbove104,
       fatigueWeakness: !!followUpAnswers.fatigueWeakness,
       durationMoreThan3Days: !!followUpAnswers.durationMoreThan3Days,
       takenOtherMedicine: !!followUpAnswers.takenOtherMedicine
     };
+    const { severity, recommendations, mlPrediction } = predictSymptomAssessment(
+      symptoms,
+      personalData,
+      followUpNormalized
+    );
 
-    let severity;
-    let recommendations;
-
-    try {
-      const geminiResult = await analyzeSymptomsWithGemini(
-        personalData,
+    // For Mild/Moderate severity, ask Gemini for a richer drug combination
+    // (the teacher's flowchart calls this out explicitly). For High severity
+    // we deliberately don't recommend OTC drugs — the user should see a doctor.
+    let aiRationale = '';
+    let aiWarnings = [];
+    let aiPowered = false;
+    if (severity !== 'High') {
+      const aiSuggestion = await getMedicineCombinationFromGemini({
         symptoms,
-        followUpNormalized
-      );
-      severity = geminiResult.severity;
-      recommendations = geminiResult.recommendations;
-    } catch (geminiError) {
-      // If Gemini fails for any reason (missing key, network, invalid JSON),
-      // rely on dataset-driven logic to keep the app functional.
-      console.warn('Gemini symptom analysis failed; falling back to dataset engine:', geminiError?.message);
-
-      severity = classifySeverity(symptoms, followUpNormalized, personalData);
-      recommendations = generateRecommendations(symptoms, severity, personalData);
+        severity,
+        personalData,
+        followUpAnswers: followUpNormalized
+      });
+      if (aiSuggestion && aiSuggestion.medicines.length > 0) {
+        recommendations.medicines = aiSuggestion.medicines;
+        aiRationale = aiSuggestion.rationale || '';
+        aiWarnings = aiSuggestion.warnings || [];
+        aiPowered = true;
+      } else {
+        aiRationale = 'Using the local ML + rules fallback plan because live AI suggestions were unavailable right now.';
+        aiWarnings = [
+          'If symptoms worsen or do not improve in 48-72 hours, consult a clinician.',
+          'Do not combine additional OTC medicines with similar ingredients unless advised.'
+        ];
+      }
     }
 
     const symptomAnalysis = await SymptomAnalysis.create({
       userId: req.userId,
-      personalData: personalData,
-      symptoms: symptoms,
-      followUpAnswers: followUpAnswers,
+      personalData,
+      symptoms,
+      followUpAnswers: followUpNormalized,
       severity,
       recommendations
     });
@@ -93,6 +105,10 @@ router.post('/analyze', auth, async (req, res, next) => {
         analysisId: symptomAnalysis._id,
         severity,
         recommendations,
+        mlPrediction,
+        aiPowered,
+        aiRationale,
+        aiWarnings,
         recommendationId: recommendation._id
       }
     });
@@ -120,12 +136,24 @@ router.delete('/:id', auth, async (req, res, next) => {
   try {
     const analysis = await SymptomAnalysis.findOne({ _id: req.params.id, userId: req.userId });
     if (!analysis) {
-      return res.status(404).json({ success: false, error: 'Analysis node not found' });
+      return res.status(404).json({ success: false, error: 'Analysis not found' });
     }
 
     // Scope deletion by both id and userId to prevent cross-user deletes.
     await SymptomAnalysis.deleteOne({ _id: req.params.id, userId: req.userId });
-    res.json({ success: true, message: 'Registry node purged' });
+    res.json({ success: true, message: 'Analysis deleted' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/model-metrics', auth, async (req, res, next) => {
+  try {
+    const metrics = getSymptomModelMetrics();
+    res.json({
+      success: true,
+      data: metrics
+    });
   } catch (error) {
     next(error);
   }

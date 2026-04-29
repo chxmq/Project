@@ -1,20 +1,21 @@
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 
 const ErrorMessage = ({ message, onDismiss }) => {
   if (!message) return null;
 
   return (
-    <div className="bg-red-950/20 border border-red-900/40 text-red-200 px-6 py-4 rounded-2xl mb-8 flex justify-between items-center animate-fade-in shadow-lg">
-      <span className="text-[10px] font-black uppercase tracking-widest leading-relaxed flex items-center gap-3">
-        <AlertTriangle size={14} className="text-red-500" />
-        <span>CRITICAL ERROR: {message}</span>
-      </span>
+    <div className="bg-[#fef2f2] border border-[#fecaca] text-[#7f1d1d] px-4 py-3 rounded-xl mb-6 flex items-start justify-between gap-3 animate-fade-in">
+      <div className="flex items-start gap-3">
+        <AlertCircle size={18} className="text-[#dc2626] mt-0.5 shrink-0" />
+        <p className="text-sm leading-relaxed">{message}</p>
+      </div>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="text-red-500 hover:text-red-400 font-black transition-colors ml-4"
+          className="text-[#9f1239] hover:text-[#7f1d1d] transition-colors shrink-0"
+          aria-label="Dismiss"
         >
-          <X size={20} />
+          <X size={16} />
         </button>
       )}
     </div>

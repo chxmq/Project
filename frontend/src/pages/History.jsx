@@ -1,280 +1,487 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  FileText,
+  ChevronDown,
+  Search,
+  Trash2,
+  Download,
+  MapPin,
+  MessageSquareHeart,
+  RotateCcw,
+  Pill,
+  Eye
+} from 'lucide-react';
 import { getSymptomHistory, deleteSymptomHistory } from '../services/symptomService.js';
 import { getPrescriptionHistory, deletePrescriptionHistory } from '../services/prescriptionService.js';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import ErrorMessage from '../components/ErrorMessage.jsx';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Activity, FileText, Calendar, Clock, ChevronRight, Search, LayoutGrid, List, Trash2 } from 'lucide-react';
+
+const severityBadge = {
+  Mild: 'bg-[#dcfce7] text-[#166534]',
+  Moderate: 'bg-[#fef3c7] text-[#854d0e]',
+  High: 'bg-[#fee2e2] text-[#991b1b]'
+};
 
 const History = () => {
-    const [activeTab, setActiveTab] = useState('symptoms');
-    const [symptomHistory, setSymptomHistory] = useState([]);
-    const [prescriptionHistory, setPrescriptionHistory] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [expandedId, setExpandedId] = useState(null);
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('symptoms');
+  const [symptomHistory, setSymptomHistory] = useState([]);
+  const [prescriptionHistory, setPrescriptionHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
 
-    useEffect(() => {
-        fetchHistory();
-    }, []);
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
-    const fetchHistory = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const [symptomRes, prescriptionRes] = await Promise.all([
-                getSymptomHistory(),
-                getPrescriptionHistory()
-            ]);
+  const fetchHistory = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [symptomRes, prescriptionRes] = await Promise.all([
+        getSymptomHistory(),
+        getPrescriptionHistory()
+      ]);
+      if (symptomRes.success) setSymptomHistory(symptomRes.data || []);
+      if (prescriptionRes.success) setPrescriptionHistory(prescriptionRes.data || []);
+    } catch {
+      setError('Couldn\'t load your history right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            if (symptomRes.success) setSymptomHistory(symptomRes.data || []);
-            if (prescriptionRes.success) setPrescriptionHistory(prescriptionRes.data || []);
-        } catch {
-            setError('Intelligence retrieval node failed. Registry inaccessible.');
-        } finally {
-            setLoading(false);
+  const handleDelete = async (id, type) => {
+    if (!window.confirm('Delete this record permanently?')) return;
+    try {
+      if (type === 'symptoms') {
+        await deleteSymptomHistory(id);
+        setSymptomHistory((prev) => prev.filter((item) => item._id !== id));
+      } else {
+        await deletePrescriptionHistory(id);
+        setPrescriptionHistory((prev) => prev.filter((item) => item._id !== id));
+      }
+    } catch {
+      setError('Couldn\'t delete that record. Try again.');
+    }
+  };
+
+  const downloadRecord = (item, type) => {
+    const blob = new Blob([JSON.stringify(item, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const timestamp = new Date(item.createdAt || Date.now()).toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `cura-${type}-${timestamp}-${item._id || 'record'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getActions = (item) => {
+    if (activeTab === 'symptoms') {
+      const needsConsult = item.recommendations?.teleconsultationRecommended || item.severity === 'High';
+      return [
+        {
+          label: 'View',
+          icon: Eye,
+          variant: 'secondary',
+          onClick: () => setExpandedId(expandedId === item._id ? null : item._id)
+        },
+        {
+          label: 'Run again',
+          icon: RotateCcw,
+          variant: 'ghost',
+          onClick: () => navigate('/symptoms')
+        },
+        ...(needsConsult
+          ? [{
+              label: 'Assistant',
+              icon: MessageSquareHeart,
+              variant: 'primary',
+              onClick: () => navigate('/teleconsultation')
+            }]
+          : []),
+        ...(item.severity === 'High'
+          ? [{
+              label: 'Nearby care',
+              icon: MapPin,
+              variant: 'accent',
+              onClick: () => navigate('/care-near-me')
+            }]
+          : []),
+        {
+          label: 'Download',
+          icon: Download,
+          variant: 'ghost',
+          onClick: () => downloadRecord(item, 'symptom')
         }
-    };
+      ];
+    }
 
-    const handleDelete = async (id, type) => {
-        if (!window.confirm('PERMANENTLY PURGE THIS RECORD FROM REGISTRY?')) return;
+    const unsafe = item.safetyStatus?.status === 'unsafe';
+    return [
+      {
+        label: 'View',
+        icon: Eye,
+        variant: 'secondary',
+        onClick: () => setExpandedId(expandedId === item._id ? null : item._id)
+      },
+      {
+        label: 'New scan',
+        icon: RotateCcw,
+        variant: 'ghost',
+        onClick: () => navigate('/prescription')
+      },
+      ...(unsafe
+        ? [{
+            label: 'Assistant',
+            icon: MessageSquareHeart,
+            variant: 'primary',
+            onClick: () => navigate('/teleconsultation')
+          }]
+        : [{
+            label: 'Pharmacies',
+            icon: Pill,
+            variant: 'primary',
+            onClick: () => navigate('/care-near-me')
+          }]),
+      ...(unsafe
+        ? [{
+            label: 'Nearby clinic',
+            icon: MapPin,
+            variant: 'accent',
+            onClick: () => navigate('/care-near-me')
+          }]
+        : []),
+      {
+        label: 'Download',
+        icon: Download,
+        variant: 'ghost',
+        onClick: () => downloadRecord(item, 'prescription')
+      }
+    ];
+  };
 
-        try {
-            if (type === 'symptoms') {
-                await deleteSymptomHistory(id);
-                setSymptomHistory(symptomHistory.filter(item => item._id !== id));
-            } else {
-                await deletePrescriptionHistory(id);
-                setPrescriptionHistory(prescriptionHistory.filter(item => item._id !== id));
-            }
-        } catch {
-            setError('Deletion protocol execution failed.');
-        }
-    };
+  const list = activeTab === 'symptoms' ? symptomHistory : prescriptionHistory;
 
-    return (
-        <div className="max-w-6xl mx-auto px-4 pb-20">
-            <div className="text-center mb-16 animate-fade-in">
-                <h1 className="text-4xl font-black mb-4 text-[#eae0d5] uppercase tracking-tighter sm:text-7xl leading-tight">
-                    Interaction <span className="text-gradient">Registry</span>
-                </h1>
-                <p className="text-lg text-[#c6ac8fcc] max-w-2xl mx-auto font-medium tracking-wide uppercase italic">
-                    Formal archival of your historical diagnostic phases and medical data extractions.
-                </p>
-            </div>
+  return (
+    <div className="max-w-6xl mx-auto pb-12">
+      <div className="text-center mb-10 space-y-3">
+        <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[#0f1f2e] tracking-tight">
+          Your history
+        </h1>
+        <p className="text-[#3e4c5b]">
+          Every symptom check and prescription you've run, in one place.
+        </p>
+      </div>
 
-            <ErrorMessage message={error} onDismiss={() => setError('')} />
+      <ErrorMessage message={error} onDismiss={() => setError('')} />
 
-            <div className="grid lg:grid-cols-4 gap-12">
-                {/* Navigation Sidebar */}
-                <div className="lg:col-span-1 space-y-6">
-                    <Card className="p-3 border-[#5e503f]/20" hover={false}>
-                        <div className="flex flex-col gap-2">
-                            <button
-                                onClick={() => setActiveTab('symptoms')}
-                                className={`flex items-center gap-4 px-6 py-5 rounded-2xl transition-all duration-500 ${activeTab === 'symptoms'
-                                    ? 'bg-[#c6ac8f] text-[#0a0908] shadow-2xl scale-[1.03]'
-                                    : 'text-[#c6ac8fcc] hover:text-[#eae0d5] hover:bg-[#22333b]/40'
-                                    }`}
-                            >
-                                <Activity size={20} />
-                                <span className="font-black text-xs uppercase tracking-widest">Symptom Phases</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('prescriptions')}
-                                className={`flex items-center gap-4 px-6 py-5 rounded-2xl transition-all duration-500 ${activeTab === 'prescriptions'
-                                    ? 'bg-[#5e503f] text-[#eae0d5] shadow-2xl scale-[1.03]'
-                                    : 'text-[#c6ac8fcc] hover:text-[#eae0d5] hover:bg-[#22333b]/40'
-                                    }`}
-                            >
-                                <FileText size={20} />
-                                <span className="font-black text-xs uppercase tracking-widest">Prescription Extractions</span>
-                            </button>
-                        </div>
-                    </Card>
+      <div className="grid lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1 space-y-4">
+          <Card className="p-2">
+            <button
+              onClick={() => setActiveTab('symptoms')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                activeTab === 'symptoms'
+                  ? 'bg-[#0f766e] text-white'
+                  : 'text-[#3e4c5b] hover:bg-[#f0eee6]'
+              }`}
+            >
+              <Activity size={18} /> Symptom checks
+            </button>
+            <button
+              onClick={() => setActiveTab('prescriptions')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors mt-1 ${
+                activeTab === 'prescriptions'
+                  ? 'bg-[#0f766e] text-white'
+                  : 'text-[#3e4c5b] hover:bg-[#f0eee6]'
+              }`}
+            >
+              <FileText size={18} /> Prescriptions
+            </button>
+          </Card>
 
-                    <Card className="bg-[#c6ac8f]/5 border-[#c6ac8f]/10 p-6">
-                        <h3 className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest mb-4 italic">Registry Status</h3>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center text-[10px] font-bold">
-                                <span className="text-[#5e503f]">TOTAL NODES:</span>
-                                <span className="text-[#eae0d5]">{symptomHistory.length + prescriptionHistory.length}</span>
-                            </div>
-                            <div className="w-full h-1 bg-[#22333b] rounded-full overflow-hidden">
-                                <div className="h-full bg-[#c6ac8f]" style={{ width: '100%' }}></div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
+          <Card className="bg-[#f0eee6]/50">
+            <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold">Total records</p>
+            <p className="mt-2 font-display text-3xl font-semibold text-[#0f1f2e]">
+              {symptomHistory.length + prescriptionHistory.length}
+            </p>
+            <p className="mt-1 text-xs text-[#7b8593]">
+              {symptomHistory.length} symptom · {prescriptionHistory.length} prescription
+            </p>
+          </Card>
 
-                {/* List Content */}
-                <div className="lg:col-span-3">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center p-32 glass rounded-[3rem] border border-[#5e503f]/20 min-h-[500px]">
-                            <LoadingSpinner size="lg" className="text-[#c6ac8f]" />
-                            <p className="mt-8 text-[#5e503f] font-black uppercase tracking-[0.5em] animate-pulse">Syncing Registry...</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6 animate-slide-up">
-                            {(activeTab === 'symptoms' ? symptomHistory : prescriptionHistory).length > 0 ? (
-                                (activeTab === 'symptoms' ? symptomHistory : prescriptionHistory).map((item, idx) => (
-                                    <Card key={item._id || idx} className="border-[#5e503f]/20 overflow-hidden" hover={false}>
-                                        <div className="flex flex-col sm:flex-row justify-between gap-8 p-4">
-                                            <div className="space-y-6 flex-grow">
-                                                <div className="flex items-center gap-4 cursor-pointer" onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}>
-                                                    <div className={`p-4 rounded-2xl ${activeTab === 'symptoms' ? 'bg-[#c6ac8f]/10 text-[#c6ac8f]' : 'bg-[#5e503f]/20 text-[#eae0d5]'}`}>
-                                                        {activeTab === 'symptoms' ? <Activity size={24} /> : <FileText size={24} />}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tighter italic leading-none">
-                                                            {activeTab === 'symptoms' ? (item.symptoms?.length > 3 ? item.symptoms.slice(0, 3).join(', ') + '...' : item.symptoms?.join(', ')) : `DR. ${item.extractedData?.doctorName?.toUpperCase() || 'UNKNOWN'}`}
-                                                        </h3>
-                                                        <p className="text-[10px] font-black text-[#5e503f] uppercase tracking-widest mt-1 italic">
-                                                            ENTRY: {new Date(item.createdAt).toLocaleString('en-GB')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-wrap gap-3">
-                                                    {activeTab === 'symptoms' ? (
-                                                        <>
-                                                            <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.severity === 'High' ? 'bg-red-950/20 text-red-500 border-red-900/40' :
-                                                                item.severity === 'Moderate' ? 'bg-amber-950/20 text-amber-500 border-amber-900/40' :
-                                                                    'bg-emerald-950/20 text-emerald-500 border-emerald-900/40'
-                                                                }`}>
-                                                                {item.severity} SEVERITY
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${item.safetyStatus?.status === 'safe' ? 'bg-emerald-950/20 text-emerald-500 border-emerald-900/40' : 'bg-red-950/20 text-red-500 border-red-900/40'
-                                                                }`}>
-                                                                {item.safetyStatus?.status.toUpperCase()} VERIFICATION
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-red-900/40 hover:text-red-500 hover:bg-red-950/10 border-none px-2"
-                                                    onClick={(e) => { e.stopPropagation(); handleDelete(item._id, activeTab); }}
-                                                >
-                                                    <Trash2 size={18} />
-                                                </Button>
-                                                <button
-                                                    onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}
-                                                    className="p-3 bg-[#22333b]/40 rounded-xl hover:bg-[#c6ac8f]/10 transition-all"
-                                                >
-                                                    <ChevronRight className={`text-[#c6ac8f] transition-transform duration-500 ${expandedId === item._id ? 'rotate-90' : ''}`} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Expanded Details */}
-                                        {expandedId === item._id && (
-                                            <div className="border-t border-[#5e503f]/20 bg-[#0a0908]/40 p-8 animate-slide-up">
-                                                {activeTab === 'symptoms' ? (
-                                                    <div className="space-y-8">
-                                                        <div className="grid md:grid-cols-2 gap-8">
-                                                            <div>
-                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-4 italic">Detected Symptoms</h4>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {item.symptoms.map(s => (
-                                                                        <span key={s} className="bg-[#22333b]/60 px-3 py-1 rounded-lg text-[9px] font-bold text-[#eae0d5] border border-[#5e503f]/30 uppercase">
-                                                                            {s}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-4 italic">Clinical Advice</h4>
-                                                                <p className="text-xs font-bold text-[#c6ac8f] leading-relaxed uppercase">
-                                                                    {item.recommendations?.teleconsultationRecommended || item.severity === 'High'
-                                                                        ? 'MANDATORY SPECIALTY CONSULTATION IS ADVISED DUE TO PHASE SEVERITY.'
-                                                                        : 'MONITOR STATUS AND ADHERE TO SUGGESTED MEDICINAL PROTOCOL.'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-between items-center">
-                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] italic">Medicinal Registry</h4>
-                                                                <p className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest italic">
-                                                                    FOLLOW-UP: {new Date(item.recommendations?.followUpDate).toLocaleDateString()}
-                                                                </p>
-                                                            </div>
-                                                            {item.recommendations?.medicines?.map((med, i) => (
-                                                                <div key={i} className="flex justify-between items-center bg-[#22333b]/20 p-4 rounded-xl border border-[#5e503f]/10">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
-                                                                        <span className="text-[9px] font-black text-[#5e503f] uppercase tracking-widest">{med.timing?.join(', ')}</span>
-                                                                    </div>
-                                                                    <span className="text-[9px] font-black text-[#c6ac8f] uppercase tracking-widest">{med.dosage} • {med.duration || 'N/A'}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-8">
-                                                        <div className="grid md:grid-cols-2 gap-8">
-                                                            <div className="bg-red-950/10 p-4 rounded-2xl border border-red-900/20">
-                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-3 italic">Safety Concerns</h4>
-                                                                <ul className="space-y-1">
-                                                                    {item.safetyStatus?.issues?.map((issue, i) => (
-                                                                        <li key={i} className="text-[9px] font-bold text-red-200 uppercase tracking-tight">• {issue.description || issue}</li>
-                                                                    ))}
-                                                                    {item.safetyStatus?.issues?.length === 0 && <li className="text-[9px] font-bold text-emerald-500 uppercase">✓ ZERO DISTRESS IDENTIFIED</li>}
-                                                                </ul>
-                                                            </div>
-                                                            <div className="bg-[#c6ac8f]/5 p-4 rounded-2xl border border-[#c6ac8f]/10">
-                                                                <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] mb-3 italic">Extraction Metadata</h4>
-                                                                <p className="text-[9px] font-bold text-[#eae0d5] uppercase">DATE: {item.extractedData?.date || 'UNDEFINED'}</p>
-                                                                <p className="text-[9px] font-bold text-[#eae0d5] uppercase mt-1">ISSUED BY: DR. {item.extractedData?.doctorName || 'UNDEFINED'}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-4">
-                                                            <h4 className="text-[10px] font-black text-[#5e503f] uppercase tracking-[0.3em] italic">Analyzed Medicines</h4>
-                                                            {item.extractedData?.medicines?.map((med, i) => (
-                                                                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#22333b]/20 p-5 rounded-xl border border-[#5e503f]/10 gap-4">
-                                                                    <div className="flex flex-col gap-1">
-                                                                        <span className="text-sm font-black text-[#eae0d5] uppercase tracking-tighter">{med.name}</span>
-                                                                        <span className="text-[9px] font-black text-[#5e503f] uppercase tracking-widest italic">{med.dosage} • {med.frequency}</span>
-                                                                    </div>
-                                                                    <div className="flex gap-2 text-[#c6ac8fcc] font-black uppercase text-[8px] tracking-widest">
-                                                                        {med.timing?.map((t, idx) => (
-                                                                            <span key={idx} className="bg-[#0a0908]/60 px-2 py-1 rounded border border-[#c6ac8f]/10">
-                                                                                {t.toUpperCase()}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </Card>
-                                ))
-                            ) : (
-                                <div className="py-32 text-center glass rounded-[3rem] border-dashed border-2 border-[#5e503f]/30">
-                                    <Search size={64} className="mx-auto mb-8 opacity-20 text-[#eae0d5]" />
-                                    <h3 className="text-3xl font-black text-[#eae0d5] uppercase tracking-tighter italic">Zero Archives Identified</h3>
-                                    <p className="text-[#c6ac8fcc] mt-4 font-bold uppercase tracking-widest text-xs">Begin a new diagnostic phase to populate this registry.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
+          <Card className="bg-white">
+            <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold">Available actions</p>
+            <ul className="mt-3 space-y-2 text-sm text-[#3e4c5b]">
+              <li className="flex gap-2"><Eye size={14} className="text-[#0f766e] mt-0.5" /> View full record</li>
+              <li className="flex gap-2"><RotateCcw size={14} className="text-[#0f766e] mt-0.5" /> Run the flow again</li>
+              <li className="flex gap-2"><MessageSquareHeart size={14} className="text-[#0f766e] mt-0.5" /> Open assistant when needed</li>
+              <li className="flex gap-2"><Download size={14} className="text-[#0f766e] mt-0.5" /> Download JSON copy</li>
+            </ul>
+          </Card>
         </div>
-    );
+
+        <div className="lg:col-span-3">
+          {loading ? (
+            <Card className="p-16 flex flex-col items-center justify-center min-h-[400px]">
+              <LoadingSpinner size="lg" />
+              <p className="mt-6 text-sm text-[#7b8593]">Loading history…</p>
+            </Card>
+          ) : list.length > 0 ? (
+            <div className="space-y-3 animate-slide-up">
+              {list.map((item) => {
+                const isExpanded = expandedId === item._id;
+                return (
+                  <Card key={item._id} className="overflow-hidden p-0">
+                    <div className="flex items-center justify-between gap-4 p-5">
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : item._id)}
+                        className="flex items-center gap-4 flex-1 min-w-0 text-left"
+                      >
+                        <div
+                          className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${
+                            activeTab === 'symptoms'
+                              ? 'bg-[#d6f1ec] text-[#0f766e]'
+                              : 'bg-[#fde8e1] text-[#c2410c]'
+                          }`}
+                        >
+                          {activeTab === 'symptoms' ? <Activity size={20} /> : <FileText size={20} />}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-medium text-[#0f1f2e] truncate">
+                            {activeTab === 'symptoms'
+                              ? item.symptoms?.slice(0, 3).join(', ') +
+                                (item.symptoms?.length > 3 ? '…' : '')
+                              : `Dr. ${item.extractedData?.doctorName || 'Unknown'}`}
+                          </h3>
+                          <p className="text-xs text-[#7b8593] mt-0.5">
+                            {new Date(item.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="ml-auto flex items-center gap-3 shrink-0">
+                          {activeTab === 'symptoms' && item.severity && (
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium ${severityBadge[item.severity] || ''}`}
+                            >
+                              {item.severity}
+                            </span>
+                          )}
+                          {activeTab === 'prescriptions' && item.safetyStatus?.status && (
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                item.safetyStatus.status === 'safe'
+                                  ? 'bg-[#dcfce7] text-[#166534]'
+                                  : 'bg-[#fee2e2] text-[#991b1b]'
+                              }`}
+                            >
+                              {item.safetyStatus.status}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : item._id)}
+                          className="p-2 text-[#3e4c5b] hover:text-[#0f1f2e] hover:bg-[#f0eee6] rounded-lg transition-colors"
+                          aria-label="Toggle details"
+                        >
+                          <ChevronDown
+                            size={18}
+                            className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="px-5 pb-5 flex flex-wrap gap-2">
+                      {getActions(item).map(({ label, icon: Icon, variant, onClick }) => (
+                        <Button
+                          key={label}
+                          type="button"
+                          size="sm"
+                          variant={variant}
+                          onClick={onClick}
+                        >
+                          <Icon size={14} /> {label}
+                        </Button>
+                      ))}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(item._id, activeTab)}
+                      >
+                        <Trash2 size={14} /> Delete
+                      </Button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-[#e6e2d6] bg-[#f0eee6]/40 p-6 animate-fade-in">
+                        {activeTab === 'symptoms' ? (
+                          <div className="space-y-5">
+                            <div className="grid sm:grid-cols-2 gap-5">
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold mb-2">
+                                  Symptoms
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {item.symptoms?.map((s) => (
+                                    <span
+                                      key={s}
+                                      className="px-2.5 py-1 bg-white border border-[#e6e2d6] rounded-full text-xs text-[#3e4c5b]"
+                                    >
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold mb-2">
+                                  Advice
+                                </p>
+                                <p className="text-sm text-[#3e4c5b]">
+                                  {item.recommendations?.teleconsultationRecommended ||
+                                  item.severity === 'High'
+                                    ? 'A consultation was recommended.'
+                                    : 'Follow the medication plan and monitor.'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {item.recommendations?.medicines?.length > 0 && (
+                              <div>
+                                <div className="flex items-center justify-between mb-3">
+                                  <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold">
+                                    Recommended medicines
+                                  </p>
+                                  {item.recommendations.followUpDate && (
+                                    <p className="text-xs text-[#0f766e] font-medium">
+                                      Follow up:{' '}
+                                      {new Date(
+                                        item.recommendations.followUpDate
+                                      ).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  {item.recommendations.medicines.map((med, i) => (
+                                    <div
+                                      key={i}
+                                      className="bg-white border border-[#e6e2d6] rounded-xl px-4 py-3 flex items-center justify-between gap-4"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-medium text-[#0f1f2e]">{med.name}</p>
+                                        <p className="text-xs text-[#7b8593]">{med.timing?.join(' · ')}</p>
+                                      </div>
+                                      <p className="text-xs text-[#3e4c5b] shrink-0">
+                                        {med.dosage} · {med.duration || 'N/A'}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
+                            <div className="grid sm:grid-cols-2 gap-5">
+                              <div className="bg-white border border-[#e6e2d6] rounded-xl p-4">
+                                <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold mb-2">
+                                  Safety concerns
+                                </p>
+                                {item.safetyStatus?.issues?.length > 0 ? (
+                                  <ul className="space-y-1 text-sm text-[#7f1d1d]">
+                                    {item.safetyStatus.issues.map((issue, i) => (
+                                      <li key={i}>• {issue.description || issue}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-sm text-[#16a34a]">No issues found.</p>
+                                )}
+                              </div>
+                              <div className="bg-white border border-[#e6e2d6] rounded-xl p-4">
+                                <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold mb-2">
+                                  Details
+                                </p>
+                                <p className="text-sm text-[#3e4c5b]">
+                                  Date:{' '}
+                                  <span className="text-[#0f1f2e]">
+                                    {item.extractedData?.date || 'Not detected'}
+                                  </span>
+                                </p>
+                                <p className="text-sm text-[#3e4c5b] mt-1">
+                                  Doctor:{' '}
+                                  <span className="text-[#0f1f2e]">
+                                    {item.extractedData?.doctorName || 'Not detected'}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+
+                            {item.extractedData?.medicines?.length > 0 && (
+                              <div>
+                                <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold mb-2">
+                                  Medicines
+                                </p>
+                                <div className="space-y-2">
+                                  {item.extractedData.medicines.map((med, i) => (
+                                    <div
+                                      key={i}
+                                      className="bg-white border border-[#e6e2d6] rounded-xl px-4 py-3 flex flex-col sm:flex-row justify-between gap-2"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-medium text-[#0f1f2e]">{med.name}</p>
+                                        <p className="text-xs text-[#7b8593]">
+                                          {med.dosage} · {med.frequency}
+                                        </p>
+                                      </div>
+                                      {med.timing?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {med.timing.map((t, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="px-2.5 py-0.5 bg-[#d6f1ec] text-[#0f766e] rounded-full text-xs font-medium"
+                                            >
+                                              {t}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="p-16 text-center border-dashed">
+              <Search size={40} className="mx-auto text-[#d4cfbf]" />
+              <h3 className="mt-4 font-display text-xl font-semibold text-[#0f1f2e]">
+                No history yet
+              </h3>
+              <p className="mt-2 text-sm text-[#7b8593]">
+                Start a symptom check or upload a prescription to see records here.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default History;

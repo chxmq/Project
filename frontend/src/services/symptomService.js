@@ -14,3 +14,8 @@ export const deleteSymptomHistory = async (id) => {
   const response = await api.delete(`/symptoms/${id}`);
   return response.data;
 };
+
+export const getSymptomModelMetrics = async () => {
+  const response = await api.get('/symptoms/model-metrics');
+  return response.data;
+};

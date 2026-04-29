@@ -1,22 +1,39 @@
 // Utility to process Excel dataset and create symptom-medicine mappings
 import XLSX from 'xlsx';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Module-level cache so repeat callers (server boot, RAG pipeline, etc.)
+// don't re-read the spreadsheet on every invocation.
+let cachedDataset = null;
+
 /**
  * Process Excel dataset and extract symptom-medicine relationships
  */
 export const processDataset = () => {
+  if (cachedDataset) return cachedDataset;
+  cachedDataset = computeDataset();
+  return cachedDataset;
+};
+
+const computeDataset = () => {
   try {
-    // Try to read the dataset file
-    const datasetPath = path.join(__dirname, '../../../datasets/symptoms_2025.xlsx');
+    // Try to read dataset from current project root or legacy datasets folder.
+    const datasetCandidates = [
+      path.join(__dirname, '../../../New Dataset-8 symptoms-2025  (1).xlsx'),
+      path.join(__dirname, '../../../datasets/symptoms_2025.xlsx')
+    ];
+    const datasetPath = datasetCandidates.find((candidate) => existsSync(candidate));
 
     let workbook;
     try {
+      if (!datasetPath) {
+        throw new Error('Dataset path not found');
+      }
       const fileBuffer = readFileSync(datasetPath);
       workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     } catch (error) {
@@ -139,14 +156,15 @@ const inferDosage = (medicineName) => {
  * Infer frequency from medicine or row data
  */
 const inferFrequency = (medicineName, row) => {
-  // Check row for frequency information
-  Object.keys(row).forEach(key => {
-    if (key.toLowerCase().includes('frequency') || key.toLowerCase().includes('times')) {
-      return String(row[key]);
-    }
+  // Prefer an explicit frequency/times column from the row when present.
+  const explicitKey = Object.keys(row || {}).find((key) => {
+    const lower = key.toLowerCase();
+    return lower.includes('frequency') || lower.includes('times');
   });
+  if (explicitKey && row[explicitKey]) {
+    return String(row[explicitKey]).trim();
+  }
 
-  // Default frequencies
   const frequencyPatterns = {
     'paracetamol': '2 times daily',
     'ibuprofen': '3 times daily',

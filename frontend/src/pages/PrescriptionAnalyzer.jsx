@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyzePrescription } from '../services/prescriptionService.js';
-import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import ErrorMessage from '../components/ErrorMessage.jsx';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { SAFETY_STATUS_COLORS } from '../utils/constants.js';
-import { UploadCloud, ShieldCheck, AlertTriangle, Pill, Activity, Calendar, User, Search, RefreshCcw, FileSpreadsheet } from 'lucide-react';
+import {
+  UploadCloud,
+  ShieldCheck,
+  AlertTriangle,
+  Pill,
+  RefreshCw,
+  ArrowRight,
+  MapPin
+} from 'lucide-react';
 
 const PrescriptionAnalyzer = () => {
   const [file, setFile] = useState(null);
@@ -17,70 +23,57 @@ const PrescriptionAnalyzer = () => {
   const [dragActive, setDragActive] = useState(false);
   const navigate = useNavigate();
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    processFile(selectedFile);
+  const processFile = (selectedFile) => {
+    if (!selectedFile) return;
+    if (!selectedFile.type.startsWith('image/')) {
+      setError('Please choose an image file (JPG, PNG, or WebP).');
+      return;
+    }
+    setFile(selectedFile);
+    setError('');
+    setAnalysis(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => setPreview(reader.result);
+    reader.readAsDataURL(selectedFile);
   };
+
+  const handleFileChange = (e) => processFile(e.target.files?.[0]);
 
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
+    else if (e.type === 'dragleave') setDragActive(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const processFile = (selectedFile) => {
-    if (selectedFile) {
-      if (!selectedFile.type.startsWith('image/')) {
-        setError('Please select an image file');
-        return;
-      }
-      setFile(selectedFile);
-      setError('');
-      setAnalysis(null);
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result);
-      };
-      reader.readAsDataURL(selectedFile);
-    }
+    if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
-      setError('Please select a prescription image');
+      setError('Please choose a prescription image first.');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       const response = await analyzePrescription(file);
       if (response.success) {
         setAnalysis(response.data);
       } else {
-        setError(response.error || 'Analysis failed');
+        setError(response.error || 'Couldn\'t analyze that image.');
       }
     } catch (err) {
-      if (err.code === 'ERR_NETWORK' || err.message.includes('ERR_CONNECTION_REFUSED')) {
-        setError('Cannot connect to server. Please make sure the backend server is running on port 5010.');
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('ERR_CONNECTION_REFUSED')) {
+        setError('Can\'t reach the server. Make sure the backend is running on port 5050.');
       } else {
-        setError(err.response?.data?.error || 'An error occurred during analysis');
+        setError(err.response?.data?.error || 'Something went wrong while analyzing.');
       }
     } finally {
       setLoading(false);
@@ -94,169 +87,171 @@ const PrescriptionAnalyzer = () => {
     setError('');
   };
 
+  const isSafe = analysis?.safetyStatus?.status === 'safe';
+
   return (
-    <div className="max-w-5xl mx-auto px-4 pb-20">
-      <div className="text-center mb-16 animate-fade-in">
-        <h1 className="text-4xl font-black mb-4 text-[#eae0d5] uppercase tracking-tighter sm:text-6xl">
-          Prescription <span className="text-gradient">Intelligence</span>
+    <div className="max-w-5xl mx-auto pb-12">
+      <div className="text-center mb-10 space-y-3">
+        <h1 className="font-display text-4xl sm:text-5xl font-semibold text-[#0f1f2e] tracking-tight">
+          Read your prescription
         </h1>
-        <p className="text-lg text-[#c6ac8fcc] max-w-2xl mx-auto font-medium">
-          Extract depth and formality from medical documents with unyielding AI strength.
+        <p className="text-[#3e4c5b] max-w-2xl mx-auto">
+          Snap a photo, drop it here, and we'll extract the medicines, dosage, and timing.
+          We'll also flag obvious safety concerns.
         </p>
       </div>
 
       <ErrorMessage message={error} onDismiss={() => setError('')} />
 
       {!analysis ? (
-        <Card className="max-w-2xl mx-auto p-0 overflow-hidden border-[#5e503f]/20" hover={false}>
-          <div className="p-10 bg-[#22333b]/40 backdrop-blur-2xl">
-            <form onSubmit={handleSubmit}>
-              <div
-                className={`relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-500 ${dragActive
-                  ? 'border-[#c6ac8f] bg-[#c6ac8f]/10 translate-y-[-4px]'
+        <Card className="max-w-2xl mx-auto p-8">
+          <form onSubmit={handleSubmit}>
+            <div
+              className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all ${
+                dragActive
+                  ? 'border-[#0f766e] bg-[#d6f1ec]/40'
                   : preview
-                    ? 'border-[#5e503f]/50 bg-[#0a0908]/40'
-                    : 'border-[#5e503f]/30 hover:border-[#c6ac8f]/50 hover:bg-[#22333b]/40'
-                  }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
+                  ? 'border-[#d4cfbf] bg-[#f0eee6]/40'
+                  : 'border-[#d4cfbf] hover:border-[#0f766e]/50 hover:bg-[#f0eee6]/30'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                id="prescription"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+
+              {preview ? (
+                <div className="relative z-0">
+                  <img
+                    src={preview}
+                    alt="Prescription preview"
+                    className="max-h-[360px] mx-auto rounded-xl border border-[#e6e2d6] shadow-[0_4px_16px_rgba(15,31,46,0.08)]"
+                  />
+                  <p className="mt-4 text-sm font-medium text-[#0f766e]">Image ready</p>
+                  <p className="text-xs text-[#7b8593] mt-1">Click or drag again to replace</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="w-14 h-14 bg-[#d6f1ec] text-[#0f766e] rounded-2xl flex items-center justify-center mx-auto">
+                    <UploadCloud size={26} />
+                  </div>
+                  <div>
+                    <p className="text-base font-medium text-[#0f1f2e]">Drop your prescription here</p>
+                    <p className="text-sm text-[#7b8593] mt-1">JPG, PNG, or WebP — up to 5 MB</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                type="submit"
+                disabled={!file}
+                isLoading={loading}
+                size="lg"
+                className="sm:min-w-[200px]"
               >
-                <input
-                  type="file"
-                  id="prescription"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-
-                {preview ? (
-                  <div className="relative z-0 group">
-                    <img
-                      src={preview}
-                      alt="Prescription preview"
-                      className="max-h-[400px] mx-auto rounded-2xl shadow-2xl border border-[#eae0d5]/10 group-hover:scale-[1.02] transition-transform duration-700"
-                    />
-                    <div className="mt-6 flex flex-col items-center gap-2">
-                      <p className="text-sm font-black text-[#c6ac8f] uppercase tracking-widest">Image Loaded</p>
-                      <p className="text-xs text-[#5e503f] font-bold">DRAG OR CLICK TO REPLACE</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="w-20 h-20 bg-[#5e503f]/20 text-[#c6ac8f] rounded-full flex items-center justify-center mx-auto shadow-inner">
-                      <UploadCloud size={40} />
-                    </div>
-                    <div>
-                      <p className="text-xl font-black text-[#eae0d5] uppercase tracking-tight">
-                        Deposit Document
-                      </p>
-                      <p className="text-sm text-[#5e503f] mt-2 font-bold uppercase tracking-widest">
-                        Drag or browse files
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  type="submit"
-                  disabled={!file || loading}
-                  isLoading={loading}
-                  size="lg"
-                  className="w-full sm:w-auto min-w-[240px]"
-                >
-                  START ANALYSIS
+                Analyze prescription
+              </Button>
+              {preview && (
+                <Button type="button" variant="ghost" onClick={handleReset} size="lg">
+                  Discard
                 </Button>
-                {preview && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleReset}
-                    size="lg"
-                    className="w-full sm:w-auto"
-                  >
-                    DISCARD
-                  </Button>
-                )}
-              </div>
-            </form>
-          </div>
+              )}
+            </div>
+          </form>
         </Card>
       ) : (
-        <div className="space-y-12 animate-slide-up">
-          {/* Analysis Banner */}
-          <Card className={`border-none p-10 ${analysis.safetyStatus.status === 'safe' ? 'bg-emerald-950/20' : 'bg-red-950/20'}`} hover={false}>
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-shrink-0 text-emerald-500">
-                {analysis.safetyStatus.status === 'safe' ? <ShieldCheck size={72} strokeWidth={1} /> : <AlertTriangle size={72} strokeWidth={1} className="text-red-500" />}
+        <div className="space-y-8 animate-slide-up">
+          {/* Safety banner */}
+          <Card className={`p-7 ${isSafe ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
+            <div className="flex flex-col sm:flex-row items-start gap-5">
+              <div className={`shrink-0 ${isSafe ? 'text-[#16a34a]' : 'text-[#dc2626]'}`}>
+                {isSafe ? <ShieldCheck size={42} strokeWidth={1.6} /> : <AlertTriangle size={42} strokeWidth={1.6} />}
               </div>
-              <div className="text-center md:text-left">
-                <h2 className="text-4xl font-black text-[#eae0d5] mb-2 uppercase tracking-tighter">
-                  {analysis.safetyStatus.status} Verification
+              <div className="flex-1">
+                <h2 className="font-display text-2xl font-semibold text-[#0f1f2e]">
+                  {isSafe ? 'Looks safe' : 'Heads up — review needed'}
                 </h2>
-                {analysis.safetyStatus.status === 'safe' ? (
-                  <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
-                    <span className="bg-emerald-900/40 text-emerald-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-emerald-800/30">
-                      ✓ VERIFIED DOSAGE & COMBINATION
-                    </span>
-                    <span className="bg-[#c6ac8f]/10 text-[#c6ac8f] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-[#c6ac8f]/20 flex items-center gap-2">
-                      <Activity size={12} /> REGISTRY SYNC COMPLETE
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-3 justify-center md:justify-start mt-4">
+                <p className="text-sm text-[#3e4c5b] mt-1">
+                  {isSafe
+                    ? 'Dosage and combinations passed our basic safety checks.'
+                    : 'We found something worth a closer look.'}
+                </p>
+                {!isSafe && analysis.safetyStatus.issues?.length > 0 && (
+                  <ul className="mt-4 space-y-1.5">
                     {analysis.safetyStatus.issues.map((issue, idx) => (
-                      <span key={idx} className="bg-red-900/40 text-red-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-red-800/30">
-                        • {issue.description || issue}
-                      </span>
+                      <li key={idx} className="text-sm text-[#7f1d1d] flex gap-2">
+                        <span className="text-[#dc2626]">•</span>
+                        <span>{issue.description || issue}</span>
+                      </li>
                     ))}
+                  </ul>
+                )}
+                {analysis.safetyStatus.warnings?.length > 0 && (
+                  <ul className="mt-3 space-y-1.5">
                     {analysis.safetyStatus.warnings.map((warn, idx) => (
-                      <span key={idx} className="bg-amber-900/40 text-amber-200 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-800/30">
-                        • {warn}
-                      </span>
+                      <li key={idx} className="text-sm text-[#854d0e] flex gap-2">
+                        <span className="text-[#d97706]">•</span>
+                        <span>{warn}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
             </div>
           </Card>
 
-          <div className="grid lg:grid-cols-3 gap-10">
-            <div className="lg:col-span-2 space-y-8">
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Extracted medicines */}
+            <div className="lg:col-span-2 space-y-4">
               <Card>
-                <div className="flex items-center justify-between mb-8 border-b border-[#5e503f]/20 pb-6">
-                  <h2 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tight flex items-center gap-3">
-                    <Pill className="text-[#c6ac8f]" /> Extracted Lab Data
+                <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#e6e2d6]">
+                  <h2 className="font-display text-xl font-semibold text-[#0f1f2e] flex items-center gap-2">
+                    <Pill className="text-[#0f766e]" size={20} /> Medicines we found
                   </h2>
-                  <span className="bg-[#5e503f]/30 text-[#c6ac8f] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                    {analysis.extractedData.medicines.length} ITEMS FOUND
+                  <span className="text-xs font-medium text-[#7b8593] bg-[#f0eee6] px-3 py-1 rounded-full">
+                    {analysis.extractedData.medicines.length} item{analysis.extractedData.medicines.length === 1 ? '' : 's'}
                   </span>
                 </div>
-                <div className="grid gap-6">
+
+                <div className="space-y-3">
                   {analysis.extractedData.medicines.map((medicine, idx) => (
-                    <div key={idx} className="p-6 bg-[#0a0908]/40 rounded-3xl border border-[#5e503f]/20 hover:border-[#c6ac8f]/30 transition-all duration-300">
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
-                        <div className="space-y-3">
-                          <h3 className="text-2xl font-black text-[#eae0d5] uppercase tracking-tighter">{medicine.name}</h3>
-                          <div className="flex flex-wrap gap-2">
-                            <div className="bg-[#5e503f]/50 px-3 py-1.5 rounded-lg text-xs font-bold text-[#eae0d5] uppercase tracking-wide">
+                    <div
+                      key={idx}
+                      className="p-5 bg-[#f0eee6]/40 border border-[#e6e2d6] rounded-2xl"
+                    >
+                      <div className="flex flex-col sm:flex-row justify-between gap-4">
+                        <div className="space-y-1.5">
+                          <h3 className="text-lg font-semibold text-[#0f1f2e]">{medicine.name}</h3>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="px-2.5 py-1 bg-white border border-[#d4cfbf] rounded-full text-[#3e4c5b]">
                               {medicine.dosage}
-                            </div>
-                            <div className="bg-[#c6ac8f]/20 px-3 py-1.5 rounded-lg text-xs font-bold text-[#c6ac8f] uppercase tracking-wide border border-[#c6ac8f]/20">
+                            </span>
+                            <span className="px-2.5 py-1 bg-[#d6f1ec] text-[#0f766e] rounded-full">
                               {medicine.frequency}
-                            </div>
+                            </span>
                           </div>
                         </div>
-                        <div className="flex gap-2 text-[#c6ac8fcc] font-black uppercase text-[9px] tracking-widest">
-                          {medicine.timing?.map((t, i) => (
-                            <span key={i} className="bg-[#0a0908]/40 px-2 py-1 rounded border border-[#5e503f]/30">
-                              {t.toUpperCase()}
-                            </span>
-                          ))}
-                        </div>
+                        {medicine.timing?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {medicine.timing.map((t, i) => (
+                              <span
+                                key={i}
+                                className="px-2.5 py-1 bg-white border border-[#e6e2d6] rounded-full text-xs font-medium text-[#3e4c5b]"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -264,75 +259,91 @@ const PrescriptionAnalyzer = () => {
               </Card>
             </div>
 
-            <div className="space-y-8">
+            {/* Side rail */}
+            <div className="space-y-4">
               <Card>
-                <h3 className="text-sm font-black text-[#5e503f] uppercase tracking-[0.3em] mb-6">Formal Details</h3>
-                <div className="space-y-6">
+                <h3 className="text-sm font-semibold text-[#0f1f2e]">Prescription details</h3>
+                <div className="mt-4 space-y-3 text-sm">
                   <div>
-                    <label className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest block mb-1">Prescriber</label>
-                    <p className="text-xl font-bold text-[#eae0d5] truncate">DR. {analysis.extractedData.doctorName?.toUpperCase() || 'NOT DETECTED'}</p>
+                    <p className="text-xs text-[#7b8593] uppercase tracking-wide">Doctor</p>
+                    <p className="font-medium text-[#0f1f2e] mt-0.5">
+                      {analysis.extractedData.doctorName || 'Not detected'}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-[#c6ac8f] uppercase tracking-widest block mb-1">Issuance Date</label>
-                    <p className="text-xl font-bold text-[#eae0d5]">
-                      {analysis.extractedData.date ? new Date(analysis.extractedData.date).toLocaleDateString('en-GB') : 'NOT DETECTED'}
+                    <p className="text-xs text-[#7b8593] uppercase tracking-wide">Date</p>
+                    <p className="font-medium text-[#0f1f2e] mt-0.5">
+                      {analysis.extractedData.date
+                        ? new Date(analysis.extractedData.date).toLocaleDateString()
+                        : 'Not detected'}
                     </p>
                   </div>
                 </div>
               </Card>
 
-              {analysis.safetyStatus.status === 'safe' && (
-                <Card className="bg-[#c6ac8f]/10 border-[#c6ac8f]/20">
-                  <h3 className="text-sm font-black text-[#c6ac8f] uppercase tracking-widest mb-4">Actions Advised</h3>
+              {isSafe ? (
+                <Card className="bg-[#d6f1ec]/40 border-[#0f766e]/20">
+                  <p className="text-xs uppercase tracking-wide text-[#0f766e] font-semibold">Step 4 · Final</p>
+                  <h3 className="text-sm font-semibold text-[#0f1f2e] mt-1">Pick up your medicines</h3>
+                  <p className="text-sm text-[#3e4c5b] mt-2">
+                    Find a pharmacy near you to fill the prescription.
+                  </p>
                   <Button
-                    className="w-full justify-center text-xs tracking-[0.2em]"
+                    variant="primary"
+                    size="sm"
+                    className="mt-4 w-full"
                     onClick={() => navigate('/care-near-me')}
                   >
-                    IDENTIFY PHARMACIES
+                    <MapPin size={14} /> Find pharmacies
                   </Button>
                 </Card>
-              )}
-
-              {analysis.safetyStatus.status === 'unsafe' && (
-                <Card className="bg-red-950/10 border-red-800/20">
-                  <h3 className="text-sm font-black text-red-400 uppercase tracking-widest mb-4">Recovery Protocol Paths</h3>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-red-950/20 rounded-2xl border border-red-900/30">
-                      <p className="text-[10px] font-black text-red-300 uppercase tracking-widest mb-3">Option A: Global Teleconsultation</p>
+              ) : (
+                <>
+                  <Card className="bg-[#fef2f2] border-[#fecaca]">
+                    <p className="text-xs uppercase tracking-wide text-[#dc2626] font-semibold">Step 4 · Talk to someone first</p>
+                    <h3 className="text-sm font-semibold text-[#0f1f2e] mt-1">Don't fill this yet</h3>
+                    <p className="text-sm text-[#7f1d1d] mt-2">
+                      A clinician should review this prescription before you take anything.
+                    </p>
+                    <div className="space-y-2 mt-4">
                       <Button
-                        variant="danger"
-                        className="w-full justify-center text-xs tracking-[0.1em]"
+                        variant="accent"
+                        size="sm"
+                        className="w-full"
                         onClick={() => navigate('/teleconsultation')}
                       >
-                        SECURE CONSULTATION
+                        Open health assistant <ArrowRight size={14} />
                       </Button>
-                    </div>
-
-                    <div className="relative py-2 flex items-center justify-center">
-                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-red-900/30"></div></div>
-                      <span className="relative bg-[#0a0908] px-4 text-[10px] font-black text-red-900/40 uppercase italic">Or</span>
-                    </div>
-
-                    <div className="p-4 bg-red-950/20 rounded-2xl border border-red-900/30">
-                      <p className="text-[10px] font-black text-red-300 uppercase tracking-widest mb-3">Option B: GPS Physical Deployment</p>
                       <Button
-                        variant="ghost"
-                        className="w-full justify-center text-xs tracking-[0.1em] border-red-900/40 text-red-400 hover:bg-red-950/40"
+                        variant="secondary"
+                        size="sm"
+                        className="w-full"
                         onClick={() => navigate('/care-near-me')}
                       >
-                        FIND LOCAL CARE
+                        <MapPin size={14} /> Find a clinic instead
                       </Button>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+
+                  <Card className="bg-[#f0eee6]/50 border-[#e6e2d6]">
+                    <p className="text-xs uppercase tracking-wide text-[#7b8593] font-semibold">After your consult</p>
+                    <p className="text-sm text-[#3e4c5b] mt-2">
+                      Once a clinician approves, find a pharmacy to fill the prescription.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-4 w-full"
+                      onClick={() => navigate('/care-near-me')}
+                    >
+                      <MapPin size={14} /> Pharmacies nearby
+                    </Button>
+                  </Card>
+                </>
               )}
 
-              <Button
-                variant="ghost"
-                className="w-full border-dashed border-[#5e503f]/40 hover:border-[#c6ac8f]/50"
-                onClick={handleReset}
-              >
-                PROCES NEW IMAGE
+              <Button variant="ghost" className="w-full" onClick={handleReset}>
+                <RefreshCw size={14} /> Process new image
               </Button>
             </div>
           </div>
