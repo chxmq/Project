@@ -99,6 +99,7 @@ body {
   background: #f7f7f3;
   min-height: 100vh;
   color: #0f1f2e;
+  overflow-x: hidden;
 }
 
 ::selection {

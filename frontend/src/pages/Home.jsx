@@ -32,7 +32,7 @@ import { useAuth } from '../context/useAuth.js';
 // Hero mockup cards — three layered floating panels
 // ────────────────────────────────────────────────────────────────────
 const SeverityResultCard = () => (
-  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_24px_60px_rgba(15,31,46,0.10)] p-5 sm:p-6 space-y-4 w-full max-w-[340px]">
+  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_24px_60px_rgba(15,31,46,0.10)] p-5 sm:p-6 space-y-4 w-full">
     <div className="flex items-center justify-between">
       <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-[#dcfce7] text-[#166534]">
         <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse" />
@@ -84,7 +84,7 @@ const SeverityResultCard = () => (
 );
 
 const PrescriptionCard = () => (
-  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_18px_40px_rgba(15,31,46,0.08)] p-5 w-full max-w-[280px]">
+  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_18px_40px_rgba(15,31,46,0.08)] p-5 w-full">
     <div className="flex items-center gap-3 mb-4">
       <div className="w-10 h-10 rounded-xl bg-[#fde8e1] text-[#c2410c] flex items-center justify-center">
         <FileText size={18} />
@@ -112,7 +112,7 @@ const PrescriptionCard = () => (
 );
 
 const ChatCard = () => (
-  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_18px_40px_rgba(15,31,46,0.08)] p-4 w-full max-w-[260px] space-y-2">
+  <div className="bg-white border border-[#e6e2d6] rounded-3xl shadow-[0_4px_12px_rgba(15,31,46,0.04),0_18px_40px_rgba(15,31,46,0.08)] p-4 w-full space-y-2">
     <div className="flex items-center gap-2 mb-1">
       <div className="w-7 h-7 rounded-lg bg-[#e0f2fe] text-[#0369a1] flex items-center justify-center">
         <MessageSquareHeart size={14} />
@@ -228,10 +228,10 @@ const Home = () => {
   const { user } = useAuth();
 
   return (
-    <div className="space-y-28 sm:space-y-36 pb-12">
+    <div className="space-y-16 sm:space-y-24 pb-12">
 
       {/* ═════════════════════════════════════════════ HERO ═════════════════════════════════════════════ */}
-      <section className="relative isolate pt-8 lg:pt-16 pb-12 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 min-h-[80vh]">
+      <section className="relative isolate pt-6 lg:pt-12 pb-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
         <HeroBackdrop />
 
         <Spotlight glowOpacity={0.12} glowSize={500} className="max-w-7xl mx-auto">
@@ -285,27 +285,24 @@ const Home = () => {
               </div>
             </div>
 
-            {/* RIGHT — three layered cards */}
-            <div className="lg:col-span-5 relative h-[460px] sm:h-[520px]">
-              <ScrollReveal direction="left" delay={150}>
-                <div className="absolute right-0 top-4 z-10">
+            {/* RIGHT — stacked cards */}
+            <div className="lg:col-span-5 flex flex-col gap-4 items-center lg:items-end">
+              <ScrollReveal direction="left" delay={150} className="w-full max-w-[360px]">
+                <div className="relative">
+                  {/* Floating heart accent */}
+                  <div className="absolute -top-3 -left-3 w-10 h-10 rounded-xl bg-[#fde8e1] flex items-center justify-center -rotate-6 shadow-[0_4px_12px_rgba(231,111,81,0.22)] z-10 animate-pulse">
+                    <Heart size={16} className="text-[#e76f51]" />
+                  </div>
                   <SeverityResultCard />
                 </div>
               </ScrollReveal>
-              <ScrollReveal direction="right" delay={300}>
-                <div className="absolute left-0 top-2 z-0 -rotate-6 opacity-95 hidden sm:block">
+              <div className="flex gap-4 w-full max-w-[360px] hidden sm:flex">
+                <ScrollReveal direction="up" delay={300} className="flex-1">
                   <PrescriptionCard />
-                </div>
-              </ScrollReveal>
-              <ScrollReveal direction="up" delay={450}>
-                <div className="absolute right-12 bottom-0 z-20 rotate-3 hidden sm:block">
+                </ScrollReveal>
+                <ScrollReveal direction="up" delay={450} className="flex-1">
                   <ChatCard />
-                </div>
-              </ScrollReveal>
-
-              {/* Floating accent decorations */}
-              <div className="absolute top-0 left-12 w-14 h-14 rounded-2xl bg-[#fde8e1] flex items-center justify-center -rotate-6 shadow-[0_8px_24px_rgba(231,111,81,0.18)] hidden sm:flex animate-pulse">
-                <Heart size={20} className="text-[#e76f51]" />
+                </ScrollReveal>
               </div>
             </div>
           </div>
@@ -543,7 +540,8 @@ const Home = () => {
               <Link to={user ? '/symptoms' : '/register'}>
                 <Button
                   size="lg"
-                  className="bg-white text-[#0f1f2e] hover:bg-[#f0eee6] hover:text-[#0f1f2e] min-w-[210px]"
+                  style={{ backgroundColor: 'white', color: '#0f1f2e' }}
+                  className="min-w-[210px] hover:opacity-90"
                 >
                   {user ? 'Open Cura' : 'Get started — free'}
                   <ArrowRight size={16} />

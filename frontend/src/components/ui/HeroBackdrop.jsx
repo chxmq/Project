@@ -9,7 +9,7 @@ import React from 'react';
  */
 const HeroBackdrop = () => {
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 -z-10 pointer-events-none" aria-hidden="true">
       {/* Dot field */}
       <svg className="absolute inset-0 w-full h-full opacity-[0.10]" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -25,36 +25,37 @@ const HeroBackdrop = () => {
       <div className="hero-blob hero-blob-tr" />
       <div className="hero-blob hero-blob-bl" />
 
-      {/* Heartbeat line, prominent */}
+      {/* Heartbeat line — raised so it doesn't overlap the trust-badge row */}
       <svg
-        className="absolute bottom-8 left-0 w-full"
-        viewBox="0 0 1200 90"
+        className="absolute left-0 w-full"
+        style={{ bottom: '16px' }}
+        viewBox="0 0 1200 60"
         preserveAspectRatio="none"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
           <linearGradient id="ekgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#0f766e" stopOpacity="0" />
-            <stop offset="20%" stopColor="#0f766e" stopOpacity="1" />
-            <stop offset="50%" stopColor="#14b8a6" stopOpacity="1" />
-            <stop offset="80%" stopColor="#0f766e" stopOpacity="1" />
+            <stop offset="20%" stopColor="#0f766e" stopOpacity="0.7" />
+            <stop offset="50%" stopColor="#14b8a6" stopOpacity="0.9" />
+            <stop offset="80%" stopColor="#0f766e" stopOpacity="0.7" />
             <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
           </linearGradient>
         </defs>
 
         <path
           className="hero-ekg"
-          d="M0,45 L160,45 L200,45 L220,25 L240,65 L260,5 L280,82 L300,45 L500,45 L540,45 L560,28 L580,62 L600,12 L620,78 L640,45 L820,45 L860,45 L880,18 L900,72 L920,2 L940,88 L960,45 L1200,45"
+          d="M0,30 L160,30 L200,30 L220,14 L240,46 L260,2 L280,56 L300,30 L500,30 L540,30 L560,16 L580,44 L600,4 L620,54 L640,30 L820,30 L860,30 L880,10 L900,50 L920,2 L940,58 L960,30 L1200,30"
           fill="none"
           stroke="url(#ekgGradient)"
-          strokeWidth="2.5"
+          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
 
-      {/* Soft top-edge fade for clean section seam */}
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#f7f7f3] to-transparent" />
+      {/* Soft bottom fade so the hero blends into the next section */}
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#f7f7f3] to-transparent" />
 
       <style>{`
         .hero-blob {
